@@ -14,9 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { useSiderCollapsed } from "../../hooks/useSiderCollapsed";
 import { useProject } from "../../context/ProjectContext";
-import { ProductBrand } from "./ProductBrand";
-import { ProjectSwitcher } from "./ProjectSwitcher";
-import "./sidebar.css";
+import { AppHeader } from "./AppHeader";
 
 const { Sider, Content } = Layout;
 
@@ -43,39 +41,40 @@ export function AppLayout() {
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
-      <Sider
-        collapsible
-        collapsed={collapsed}
-        onCollapse={setCollapsed}
-        width={220}
-        collapsedWidth={64}
-        theme="light"
-        style={{ borderRight: "1px solid #f0f0f0" }}
-      >
-        <ProductBrand collapsed={collapsed} />
-        <ProjectSwitcher collapsed={collapsed} />
+      <AppHeader />
+      <Layout>
+        <Sider
+          collapsible
+          collapsed={collapsed}
+          onCollapse={setCollapsed}
+          width={220}
+          collapsedWidth={64}
+          theme="light"
+          style={{ borderRight: "1px solid #f0f0f0" }}
+        >
+          <Menu
+            mode="inline"
+            inlineCollapsed={collapsed}
+            selectedKeys={[selected]}
+            items={NAV}
+            onClick={({ key }) => navigate(key)}
+            style={{ borderRight: 0 }}
+          />
 
-        <Menu
-          mode="inline"
-          inlineCollapsed={collapsed}
-          selectedKeys={[selected]}
-          items={NAV}
-          onClick={({ key }) => navigate(key)}
-        />
+          {!collapsed && healthQuery.data && (
+            <Typography.Text
+              type="secondary"
+              style={{ fontSize: 11, padding: "8px 16px", display: "block", wordBreak: "break-all" }}
+            >
+              {healthQuery.data.e2eRoot}
+            </Typography.Text>
+          )}
+        </Sider>
 
-        {!collapsed && healthQuery.data && (
-          <Typography.Text
-            type="secondary"
-            style={{ fontSize: 11, padding: "8px 16px", display: "block", wordBreak: "break-all" }}
-          >
-            {healthQuery.data.e2eRoot}
-          </Typography.Text>
-        )}
-      </Sider>
-
-      <Content style={{ background: "#fff", overflow: "hidden" }}>
-        <Outlet key={projectId} />
-      </Content>
+        <Content style={{ background: "#fff", overflow: "hidden" }}>
+          <Outlet key={projectId} />
+        </Content>
+      </Layout>
     </Layout>
   );
 }

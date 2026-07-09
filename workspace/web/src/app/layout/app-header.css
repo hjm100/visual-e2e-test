@@ -1,0 +1,140 @@
+.app-header.ant-layout-header {
+  padding: 0 20px;
+  background: #fff;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: 56px;
+  line-height: 56px;
+  padding: 0 20px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.app-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.app-header__logo {
+  flex-shrink: 0;
+  border-radius: 8px;
+}
+
+.app-header__brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+
+.app-header__brand-name {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f1f1f;
+  line-height: 1.25;
+}
+
+.app-header__brand-tagline {
+  display: block;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.app-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.app-header__project-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 180px;
+  max-width: 260px;
+  padding: 6px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.app-header__project-trigger:hover {
+  border-color: #4096ff;
+  box-shadow: 0 0 0 2px rgba(5, 145, 255, 0.1);
+}
+
+.app-header__project-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: #e6f4ff;
+  color: #1677ff;
+  font-size: 14px;
+}
+
+.app-header__project-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.app-header__project-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f1f1f;
+  line-height: 1.25;
+}
+
+.app-header__project-id {
+  display: block;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.app-header__project-chevron {
+  flex-shrink: 0;
+  color: #bfbfbf;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.app-header__project-option-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1f1f1f;
+}
+
+.app-header__project-option-id {
+  font-size: 11px;
+  color: #8c8c8c;
+  margin-top: 1px;
+}
+
+.app-header__project-dropdown .ant-dropdown-menu {
+  min-width: 220px;
+}
+
+.app-header__project-dropdown .ant-dropdown-menu-item {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}

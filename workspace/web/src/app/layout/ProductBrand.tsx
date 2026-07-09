@@ -1,39 +1,21 @@
-import { Tooltip, Typography } from "antd";
-import "./sidebar.css";
+import { Typography } from "antd";
+import "./app-header.css";
 
-interface ProductBrandProps {
-  collapsed: boolean;
-}
-
-export function ProductBrand({ collapsed }: ProductBrandProps) {
-  const logo = (
-    <img
-      src="/favicon-32x32.png"
-      alt="Visual E2E Test"
-      className="sidebar-product-logo"
-      width={32}
-      height={32}
-    />
-  );
-
-  if (collapsed) {
-    return (
-      <div className="sidebar-product-brand sidebar-product-brand--collapsed">
-        <Tooltip title="Visual E2E Test" placement="right">
-          {logo}
-        </Tooltip>
-      </div>
-    );
-  }
-
+export function ProductBrand() {
   return (
-    <div className="sidebar-product-brand">
-      {logo}
-      <div className="sidebar-product-text">
-        <Typography.Text className="sidebar-product-name" ellipsis>
+    <div className="app-header__brand">
+      <img
+        src="/favicon-32x32.png"
+        alt="Visual E2E Test"
+        className="app-header__logo"
+        width={32}
+        height={32}
+      />
+      <div className="app-header__brand-text">
+        <Typography.Text className="app-header__brand-name" ellipsis>
           Visual E2E Test
         </Typography.Text>
-        <Typography.Text className="sidebar-product-tagline" ellipsis type="secondary">
+        <Typography.Text className="app-header__brand-tagline" ellipsis type="secondary">
           JSON-driven E2E Workbench
         </Typography.Text>
       </div>

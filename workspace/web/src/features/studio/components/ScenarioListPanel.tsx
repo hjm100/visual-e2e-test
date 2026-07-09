@@ -39,7 +39,6 @@ export function ScenarioListPanel({
           onChange={onModuleChange}
           options={(modulesQuery.data ?? []).map((m) => ({ value: m.module, label: m.module }))}
         />
-        <div className="studio-list-panel__title">场景列表</div>
       </div>
       <div className="studio-list-panel__body">
         {scenarios.map((s) => {

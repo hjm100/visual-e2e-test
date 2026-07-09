@@ -15,6 +15,7 @@
   padding: 12px;
   border-bottom: 1px solid #e8e8e8;
   background: #fafafa;
+  height: 57px;
 }
 
 .studio-list-panel__title {
@@ -79,7 +80,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px;
+  padding: 12px 16px;
   background: #fff;
   border-bottom: 1px solid #e8e8e8;
   gap: 16px;
