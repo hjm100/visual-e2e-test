@@ -3,11 +3,20 @@
   "identifier": "default",
   "description": "Default capabilities for Visual E2E Test",
   "windows": ["main", "report-*"],
+  "remote": {
+    "urls": [
+      "http://127.0.0.1:*",
+      "http://localhost:*"
+    ]
+  },
   "permissions": [
     "core:default",
     "core:webview:allow-create-webview-window",
     "dialog:allow-save",
-    "fs:allow-write-file",
+    {
+      "identifier": "fs:allow-write-file",
+      "allow": [{ "path": "$HOME/**" }]
+    },
     {
       "identifier": "opener:allow-open-path",
       "allow": [{ "path": "**" }]

@@ -29,13 +29,18 @@ npm install
 npm run setup:rust          # 首次
 source ~/.cargo/env
 npm run build:engine        # 首次或 engine 变更后
-npm run tauri:dev           # 开发：Vite + sidecar，数据在 Storage
-npm run tauri:build         # 打包 .app / .dmg
+npm run tauri:dev           # 开发：:3100 + visual-e2e-test/Storage
+npm run tauri:build:mac      # macOS → build/macos/（.app 用 :6100）
+npm run tauri:build:win      # Windows → build/windows/
+npm run tauri:build:all      # mac + win
 ```
 
-Tauri 的项目与配置在 Storage，不在仓库 `projects/`：
+Tauri 客户端数据与仓库 `projects/` 分离：
 
 ```bash
+# tauri:dev
+open ~/Library/Application\ Support/visual-e2e-test/Storage
+# 安装的 .app
 open ~/Library/Application\ Support/com.visual-e2e-test.app/Storage
 ```
 

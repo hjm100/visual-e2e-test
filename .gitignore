@@ -2,6 +2,7 @@
 projects/
 node_modules/
 dist/
+build/
 .venv/
 .playwright/
 *.log

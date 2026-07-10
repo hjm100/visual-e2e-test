@@ -1,19 +1,22 @@
 # Visual E2E Test — 桌面客户端（Tauri + Node Sidecar）
 
-Tauri WebView + Node sidecar（Fastify `127.0.0.1:3100`）。
+Tauri WebView + Node sidecar（Fastify `127.0.0.1`）。
 
 ## 架构
 
 ```
 Tauri (Rust WebView)
-  └─ spawn Node sidecar → workspace/server (127.0.0.1:3100)
+  └─ spawn Node sidecar → workspace/server
+        ├─ tauri:dev  → 127.0.0.1:3100
+        └─ .app       → 127.0.0.1:6100
         ├─ Fastify API + 文件读写
         ├─ Playwright 测试（channel: chrome，使用本机 Chrome）
         └─ 生产模式托管 workspace/web/dist
 
-用户数据（持久化，重装 App 后保留）:
-  macOS:   ~/Library/Application Support/com.visual-e2e-test.app/Storage/
-  Windows: %APPDATA%/com.visual-e2e-test.app/Storage/
+用户数据（持久化）:
+  tauri:dev   macOS: ~/Library/Application Support/visual-e2e-test/Storage/
+  .app        macOS: ~/Library/Application Support/com.visual-e2e-test.app/Storage/
+  Windows 对应: %APPDATA%/visual-e2e-test/ 与 %APPDATA%/com.visual-e2e-test.app/
     ├── projects/
     └── config/settings.json
 ```
@@ -35,7 +38,7 @@ npm install
 npm run workspace          # Web :5173，API :3101
 ```
 
-`E2E_RUNTIME=workspace`：`projects/`、`config/` 在仓库目录；API 端口 **3101**（与客户端 **3100** 分离，避免与 `.app` 冲突）。
+`E2E_RUNTIME=workspace`：`projects/`、`config/` 在仓库目录；API 端口 **3101**。
 
 `/api/health` 应返回 `"runtime":"workspace"`、`"port":3101`。
 
@@ -56,40 +59,50 @@ npm run build:engine       # 生成 dist/cli.js
 npm run tauri:dev
 ```
 
-`tauri dev` 会执行 `build:server`，并启动 Vite（`:5173`）。Sidecar 在 `127.0.0.1:3100` 起 API（`E2E_RUNTIME=client`）；WebView 加载 Vite，Vite 将 `/api` 代理到 `:3100`。
+`tauri dev` 会执行 `build:server`，并启动 Vite（`:5173`）。Sidecar 在 `127.0.0.1:3100` 起 API；WebView 加载 Vite，Vite 将 `/api` 代理到 `:3100`。
 
-启动前脚本会检查 `:3100` 是否被 workspace 或已安装的 `.app` 占用。
+**可与已安装的 `.app` 同时运行**（`.app` 使用 `:6100` 与独立 Storage）。
 
 ### 运行模式（脚本契约）
 
 | 命令 | `E2E_RUNTIME` | API 端口 | 数据目录 |
 |------|---------------|----------|----------|
 | `npm run workspace` | `workspace` | `3101` | 仓库 `projects/`、`config/` |
-| `npm run tauri:dev` / `.app` | `client` | `3100` | Storage |
+| `npm run tauri:dev` | `client` | `3100` | `visual-e2e-test/Storage/` |
+| 安装的 `.app` | `client` | `6100` | `com.visual-e2e-test.app/Storage/` |
 
 ### dev 与 build 的差异
 
 | 项 | `tauri:dev` | `tauri:build`（`.app`） |
 |----|-------------|-------------------------|
 | 代码根 `E2E_ROOT` | 仓库根目录 | `Contents/Resources/app` |
-| 用户数据 | Storage（见下） | Storage（同上） |
+| 用户数据 | `visual-e2e-test/Storage/` | `com.visual-e2e-test.app/Storage/` |
+| API 端口 | `3100` | `6100` |
 | 前端 | Vite `:5173` | server 静态托管 `web/dist` |
 | Node | 系统 PATH 中的 `node` | 包内 `resources/node/{platform}/bin/node` |
 | `CLIENT_MODE` | `0` | `1` |
 
-`tauri:dev` 与 `.app` 共用同一份 Storage（`identifier`: `com.visual-e2e-test.app`）。仓库内 `projects/` 仅 `npm run workspace` 使用。
+仓库内 `projects/` 仅 `npm run workspace` 使用；客户端 dev 与 prod **数据隔离**。
 
 ### 确认当前连的是哪个 server
 
 DevTools → Network → `/api/health`：
 
 - `"runtime":"workspace"`、`"port":3101` → 网页开发 server
-- `"runtime":"client"`、仓库 `e2eRoot` → `tauri:dev` sidecar
-- `e2eRoot` 含 `.app` → 已安装客户端（网页 dev 不应连到它；workspace 已改用 3101）
+- `"runtime":"client"`、`"port":3100`、仓库 `e2eRoot` → `tauri:dev` sidecar
+- `"runtime":"client"`、`"port":6100`、`e2eRoot` 含 `.app` → 已安装 `.app`
 
 ### 用户数据目录（Storage）
 
-macOS：
+**开发（tauri:dev）** — macOS：
+
+```
+~/Library/Application Support/visual-e2e-test/Storage/
+  ├── projects/
+  └── config/settings.json
+```
+
+**生产（.app）** — macOS：
 
 ```
 ~/Library/Application Support/com.visual-e2e-test.app/Storage/
@@ -97,28 +110,52 @@ macOS：
   └── config/settings.json
 ```
 
-Windows：`%APPDATA%/com.visual-e2e-test.app/Storage/`
-
-打开 Storage（macOS）：
+打开目录：
 
 ```bash
+# dev
+open ~/Library/Application\ Support/visual-e2e-test/Storage
+# .app
 open ~/Library/Application\ Support/com.visual-e2e-test.app/Storage
 ```
 
-App 菜单 **Visual E2E Test → 打开数据目录** 同样打开上述路径。
+App 菜单 **Visual E2E Test → 打开数据目录** 打开当前模式对应路径。
 
 首次启动时 sidecar 创建 `Storage/projects`、`Storage/config`；若 `config/settings.json` 不存在，从 `E2E_ROOT/config/settings.json` 复制默认配置。
+
+### 清理旧 Launcher 遗留
+
+若存在 `~/Library/Application Support/visual-e2e-test/launcher.lock.json`（旧 Launcher 单实例锁），可安全删除；Tauri 不再使用该文件。
 
 ## 打包
 
 ```bash
-npm run download:node      # 下载平台 Node 到 src-tauri/resources/node/
-npm run tauri:build        # build:client + tauri build
+npm run tauri:build:mac    # 仅 macOS → build/macos/
+npm run tauri:build:win    # 仅 Windows → build/windows/
+npm run tauri:build:all    # mac + win（macOS 上 win 为交叉编译）
+npm run tauri:build        # 同 tauri:build:mac
 ```
 
-产物：`src-tauri/target/release/bundle/`
+一条命令完成：同步 `package.json` 版本 → 清空对应 `build/` 子目录 → 下载 Node sidecar → 构建 client → 打包。
 
-安装或替换 `/Applications/Visual E2E Test.app` 后启动；数据仍读 Storage，与 `tauri:dev` 一致。
+| 命令 | 产物 |
+|------|------|
+| `tauri:build:mac` | `build/macos/`（`.app` + `.dmg`） |
+| `tauri:build:win` | `build/windows/`（`.exe` / `.msi`） |
+| `tauri:build:all` | 以上两者（macOS 上 win 为交叉编译 `.exe`） |
+
+**Windows 完整 `.msi`** 需在 Windows 上运行 `tauri:build:win`。
+
+首次在 macOS 交叉编译 Windows 需安装：
+
+```bash
+rustup target add x86_64-pc-windows-msvc
+cargo install cargo-xwin
+```
+
+Rust 中间产物在 `src-tauri/target/`。
+
+安装或替换 `/Applications/Visual E2E Test.app` 后启动；数据在 `com.visual-e2e-test.app/Storage/`，与 `tauri:dev` 分开。
 
 ### 包内容
 
@@ -129,27 +166,27 @@ npm run tauri:build        # build:client + tauri build
 
 ### 首次启动
 
-Sidecar 初始化 Storage（见「Tauri 开发 → 用户数据目录」）。
+Sidecar 初始化 Storage（见「用户数据目录」）。
 
 ## 环境变量（Sidecar / 启动脚本）
 
-| 变量 | `workspace` | `client`（tauri / .app） |
-|------|-------------|--------------------------|
-| `E2E_RUNTIME` | `workspace` | `client` |
-| `WORKSPACE_PORT` | `3101` | `3100` |
-| `E2E_ROOT` | 仓库根 | dev: 仓库根；build: `Resources/app` |
-| `PROJECTS_DIR` | `{repo}/projects` | `{appData}/Storage/projects` |
-| `CONFIG_DIR` | `{repo}/config` | `{appData}/Storage/config` |
-| `SERVE_WEB` | 未设置 | dev: `0`；build: `1` |
-| `CLIENT_MODE` | 未设置 | dev: `0`；build: `1` |
-| `BUNDLED_NODE` | 清除（用 `process.execPath`） | 包内 / 系统 Node 绝对路径 |
+| 变量 | `workspace` | `tauri:dev` | `.app` |
+|------|-------------|-------------|--------|
+| `E2E_RUNTIME` | `workspace` | `client` | `client` |
+| `WORKSPACE_PORT` | `3101` | `3100` | `6100` |
+| `E2E_ROOT` | 仓库根 | 仓库根 | `Resources/app` |
+| `PROJECTS_DIR` | `{repo}/projects` | `visual-e2e-test/Storage/projects` | `com.visual-e2e-test.app/Storage/projects` |
+| `CONFIG_DIR` | `{repo}/config` | `visual-e2e-test/Storage/config` | `com.visual-e2e-test.app/Storage/config` |
+| `SERVE_WEB` | 未设置 | `0` | `1` |
+| `CLIENT_MODE` | 未设置 | `0` | `1` |
+| `BUNDLED_NODE` | 清除 | 系统 Node | 包内 Node |
 
 ## 常见问题
 
 ### 运行中心 spawn node ENOENT
 
 - `workspace`：确认 `curl :3101/api/health` 为 `"runtime":"workspace"`；勿手动设置 `BUNDLED_NODE`。
-- `tauri:dev` / `.app`：退出占用 `:3100` 的旧 `.app`；重打包后 Node 在 `Resources/resources/node/darwin-arm64/bin/node`。
+- `tauri:dev` / `.app`：Node 路径见上表；`.app` 在 `Resources/resources/node/darwin-arm64/bin/node`。
 
 ### Rust / rustup
 

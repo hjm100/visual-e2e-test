@@ -1,4 +1,4 @@
-import { Button } from "antd";
+import { Button, message } from "antd";
 import { openReport } from "../utils/open-report";
 
 interface ReportLinkProps {
@@ -13,7 +13,9 @@ export function ReportLink({ href, children = "查看" }: ReportLinkProps) {
       size="small"
       style={{ paddingInline: 0, height: "auto" }}
       onClick={() => {
-        void openReport(href);
+        openReport(href).catch((e) => {
+          message.error(e instanceof Error ? e.message : "无法打开报告");
+        });
       }}
     >
       {children}

@@ -19,11 +19,17 @@ export async function openReport(path: string): Promise<void> {
       height: 900,
       center: true,
     });
-    win.once("tauri://error", (e) => {
-      console.error("report window error", e);
+    await new Promise<void>((resolve, reject) => {
+      win.once("tauri://created", () => resolve());
+      win.once("tauri://error", (e) => {
+        reject(new Error(typeof e === "object" && e && "payload" in e ? String(e.payload) : "无法打开报告窗口"));
+      });
     });
     return;
   }
 
-  window.open(href, "_blank", "noopener,noreferrer");
+  const popup = window.open(href, "_blank", "noopener,noreferrer");
+  if (!popup) {
+    throw new Error("无法打开报告，请检查浏览器是否拦截弹窗");
+  }
 }

@@ -8,7 +8,16 @@ use tauri::{AppHandle, Manager};
 
 use crate::storage::{ensure_storage, resolve_storage_layout, StorageLayout};
 
-const PORT: u16 = 3100;
+const DEV_PORT: u16 = 3100;
+const PROD_PORT: u16 = 6100;
+
+fn client_port(is_dev: bool) -> u16 {
+    if is_dev {
+        DEV_PORT
+    } else {
+        PROD_PORT
+    }
+}
 
 pub struct SidecarState {
     child: Mutex<Option<Child>>,
@@ -142,8 +151,8 @@ fn server_entry(app_root: &Path, is_dev: bool) -> PathBuf {
     app_root.join("workspace/server/dist/index.js")
 }
 
-fn wait_for_health(timeout: Duration) -> Result<(), String> {
-    let url = format!("http://127.0.0.1:{PORT}/api/health");
+fn wait_for_health(port: u16, timeout: Duration) -> Result<(), String> {
+    let url = format!("http://127.0.0.1:{port}/api/health");
     let client = Client::builder()
         .timeout(Duration::from_secs(2))
         .build()
@@ -178,7 +187,8 @@ pub fn start_sidecar(
         ));
     }
 
-    let layout = resolve_storage_layout(app)?;
+    let port = client_port(is_dev);
+    let layout = resolve_storage_layout(app, is_dev)?;
     ensure_storage(&layout, &app_root)?;
 
     let mut cmd = Command::new(&node);
@@ -186,7 +196,7 @@ pub fn start_sidecar(
     cmd.env("E2E_ROOT", &app_root);
     cmd.env("PROJECTS_DIR", &layout.projects_dir);
     cmd.env("CONFIG_DIR", &layout.config_dir);
-    cmd.env("WORKSPACE_PORT", PORT.to_string());
+    cmd.env("WORKSPACE_PORT", port.to_string());
     cmd.env("WORKSPACE_HOST", "127.0.0.1");
     cmd.env("E2E_RUNTIME", "client");
     cmd.env("BUNDLED_NODE", node.to_string_lossy().to_string());
@@ -222,8 +232,8 @@ pub fn start_sidecar(
         *guard = Some(child);
     }
 
-    wait_for_health(Duration::from_secs(60))?;
+    wait_for_health(port, Duration::from_secs(60))?;
 
-    let base_url = format!("http://127.0.0.1:{PORT}");
+    let base_url = format!("http://127.0.0.1:{port}");
     Ok((layout, base_url))
 }

@@ -55,12 +55,17 @@ function main() {
   }
 
   const pkgSrc = join(repoRoot, "package.json");
+  const serverPkgSrc = join(repoRoot, "workspace/server/package.json");
   const pkg = JSON.parse(readFileSync(pkgSrc, "utf-8"));
+  const serverPkg = JSON.parse(readFileSync(serverPkgSrc, "utf-8"));
   const stagedPkg = {
     name: pkg.name,
     version: pkg.version,
     type: pkg.type,
-    dependencies: pkg.dependencies,
+    dependencies: {
+      ...pkg.dependencies,
+      ...serverPkg.dependencies,
+    },
   };
   writeFileSync(join(stageRoot, "package.json"), `${JSON.stringify(stagedPkg, null, 2)}\n`);
 
@@ -71,6 +76,14 @@ function main() {
   }
   copyFiltered(nmSrc, join(stageRoot, "node_modules"));
   console.log("Staged node_modules/");
+
+  const serverNmSrc = join(repoRoot, "workspace/server/node_modules");
+  if (!existsSync(serverNmSrc)) {
+    console.error("Missing workspace/server/node_modules. Run: npm install --prefix workspace/server");
+    process.exit(1);
+  }
+  copyFiltered(serverNmSrc, join(stageRoot, "workspace/server/node_modules"));
+  console.log("Staged workspace/server/node_modules/");
 
   const bundledConfig = join(repoRoot, "config", "settings.client.json");
   const fallbackConfig = join(repoRoot, "config", "settings.json");

@@ -55,7 +55,8 @@ pub fn run() {
         .on_menu_event(|app, event| {
             match event.id().as_ref() {
                 "open-data" => {
-                    if let Err(err) = open_storage_in_file_manager(app) {
+                    let is_dev = cfg!(debug_assertions);
+                    if let Err(err) = open_storage_in_file_manager(app, is_dev) {
                         eprintln!("open-data: {err}");
                     }
                 }

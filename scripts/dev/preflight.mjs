@@ -29,19 +29,27 @@ export async function preflightWorkspace() {
 }
 
 export async function preflightTauriDev() {
-  const health = await fetchHealth(PORTS.client);
+  const health = await fetchHealth(PORTS.clientDev);
   if (!health) return;
 
   if (health.runtime === "workspace") {
-    console.error(`[tauri:dev] Port ${PORTS.client} is workspace server. Stop npm run workspace first.`);
+    console.error(
+      `[tauri:dev] Port ${PORTS.clientDev} is workspace server. Stop npm run workspace first.`,
+    );
     process.exit(1);
   }
 
   if (health.e2eRoot?.includes(".app")) {
     console.error(
-      `[tauri:dev] Port ${PORTS.client} is used by installed Visual E2E Test.app.`,
+      `[tauri:dev] Port ${PORTS.clientDev} is used by an older .app build (before :6100).`,
     );
-    console.error("Quit the .app (⌘Q) before npm run tauri:dev.");
+    console.error("Quit the old .app or install a build that uses port 6100.");
     process.exit(1);
+  }
+
+  if (health.runtime === "client") {
+    console.warn(
+      `[tauri:dev] Port ${PORTS.clientDev} already has a client sidecar; stop it if startup fails.`,
+    );
   }
 }

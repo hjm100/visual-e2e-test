@@ -2,11 +2,12 @@
 /**
  * Download official Node.js binary into src-tauri/resources/node for sidecar packaging.
  */
-import { createWriteStream, existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
+import { createWriteStream, copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { pipeline } from "node:stream/promises";
+import { currentNodePlatform } from "./platform.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const NODE_VERSION = process.env.NODE_SIDEcar_VERSION ?? "22.14.0";
@@ -63,6 +64,14 @@ function platformReady(platformDir, spec) {
   return true;
 }
 
+function copyNodeBinary(src, dest) {
+  mkdirSync(dirname(dest), { recursive: true });
+  copyFileSync(src, dest);
+  if (process.platform !== "win32") {
+    execSync(`chmod +x "${dest}"`);
+  }
+}
+
 async function fetchPlatform(key, spec) {
   const platformDir = join(outRoot, key);
   if (platformReady(platformDir, spec)) {
@@ -84,11 +93,9 @@ async function fetchPlatform(key, spec) {
   const extracted = findExtractedRoot(tmp);
 
   if (key.endsWith("win32-x64")) {
-    execSync(`cp "${join(extracted, "node.exe")}" "${join(platformDir, "node.exe")}"`);
+    copyNodeBinary(join(extracted, "node.exe"), join(platformDir, "node.exe"));
   } else {
-    const binDir = join(platformDir, "bin");
-    mkdirSync(binDir, { recursive: true });
-    execSync(`cp "${join(extracted, "bin", "node")}" "${join(binDir, "node")}"`);
+    copyNodeBinary(join(extracted, "bin", "node"), join(platformDir, "bin", "node"));
   }
 
   rmSync(join(platformDir, "_extract"), { recursive: true, force: true });
@@ -100,10 +107,23 @@ async function fetchPlatform(key, spec) {
 }
 
 async function main() {
-  const only = process.argv[2];
-  const targets = only ? { [only]: PLATFORMS[only] } : PLATFORMS;
+  const args = process.argv.slice(2);
+  const all = args.includes("--all");
+  const onlyArg = args.find((a) => a !== "--all");
+
+  let targets;
+  if (all) {
+    targets = PLATFORMS;
+  } else if (onlyArg) {
+    targets = { [onlyArg]: PLATFORMS[onlyArg] };
+  } else {
+    const current = currentNodePlatform();
+    targets = { [current]: PLATFORMS[current] };
+    console.log(`Downloading Node for current platform: ${current}`);
+  }
+
   if (Object.values(targets).some((v) => !v)) {
-    console.error(`Unknown platform: ${only}`);
+    console.error(`Unknown platform: ${onlyArg}`);
     console.error(`Available: ${Object.keys(PLATFORMS).join(", ")}`);
     process.exit(1);
   }

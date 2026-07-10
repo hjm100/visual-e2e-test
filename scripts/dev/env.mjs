@@ -7,7 +7,10 @@ export const REPO_ROOT = resolve(__dirname, "../..");
 
 export const PORTS = {
   workspace: 3101,
-  client: 3100,
+  /** tauri:dev sidecar */
+  clientDev: 3100,
+  /** installed .app sidecar */
+  clientProd: 6100,
 };
 
 const SCRUB_KEYS = [
@@ -39,5 +42,5 @@ export function applyWorkspaceEnv() {
 }
 
 export function applyTauriDevWebEnv() {
-  process.env.VITE_API_URL = `http://127.0.0.1:${PORTS.client}`;
+  process.env.VITE_API_URL = `http://127.0.0.1:${PORTS.clientDev}`;
 }
