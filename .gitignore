@@ -6,3 +6,12 @@ dist/
 .playwright/
 *.log
 .DS_Store
+
+# Tauri / client build artifacts
+src-tauri/target/
+src-tauri/resources/
+src-tauri/gen/
+
+# Staged sidecar (rebuilt on pack)
+src-tauri/resources/app/
+src-tauri/resources/node/

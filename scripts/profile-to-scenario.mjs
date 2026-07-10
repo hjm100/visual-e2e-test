@@ -15,15 +15,29 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from "node:fs";
 import { join, dirname, basename, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import settings from "../config/settings.json" with { type: "json" };
+import { getE2eRoot, getProjectsDir, getSettingsPath } from "./paths.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const root = join(__dirname, "..");
+const root = getE2eRoot();
+
+function loadDefaultSettings() {
+  const settingsPath = getSettingsPath();
+  if (existsSync(settingsPath)) {
+    return JSON.parse(readFileSync(settingsPath, "utf-8"));
+  }
+  const bundled = join(root, "config", "settings.json");
+  if (existsSync(bundled)) {
+    return JSON.parse(readFileSync(bundled, "utf-8"));
+  }
+  return {};
+}
+
+const settings = loadDefaultSettings();
 
 function resolveProjectId() {
   if (process.env.ACTIVE_PROJECT) return process.env.ACTIVE_PROJECT;
   if (settings.defaultProject) return settings.defaultProject;
-  const projectsDir = join(root, "projects");
+  const projectsDir = getProjectsDir();
   if (!existsSync(projectsDir)) {
     throw new Error("未找到 projects/ 目录");
   }
@@ -38,7 +52,7 @@ function resolveProjectId() {
 }
 
 const projectId = resolveProjectId();
-const projectRoot = join(root, "projects", projectId);
+const projectRoot = join(getProjectsDir(), projectId);
 const profilesDir = join(projectRoot, "产品画像");
 const scenariosRoot = join(projectRoot, "scenarios");
 

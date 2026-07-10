@@ -1,18 +1,27 @@
 {
   "name": "visual-e2e-test",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Visual workbench for JSON-driven E2E automated testing",
   "type": "module",
   "scripts": {
     "test": "node scripts/run-test.mjs",
     "build": "tsc",
+    "build:engine": "tsc",
+    "build:server": "npm run build --prefix workspace/server",
+    "build:web": "npm run build --prefix workspace/web",
+    "build:client": "npm run build:engine && npm run build:server && npm run build:web && npm run stage:sidecar",
+    "stage:sidecar": "node scripts/pack/stage-app.mjs",
+    "download:node": "node scripts/pack/download-node.mjs",
+    "generate:icons": "node scripts/pack/generate-icons.mjs",
+    "setup:rust": "bash scripts/setup-rust-mirror.sh",
     "typecheck": "tsc --noEmit",
     "test:all": "node scripts/run-test.mjs",
-    "workspace": "npm run workspace:server & npm run workspace:web",
-    "workspace:web": "npm run dev --prefix workspace/web",
-    "workspace:server": "npm run dev --prefix workspace/server",
-    "test:login": "node scripts/run-test.mjs",
-    "test:project": "node scripts/run-test.mjs"
+    "workspace": "node scripts/dev/workspace.mjs",
+    "workspace:web": "node scripts/dev/workspace-web.mjs",
+    "workspace:server": "node scripts/dev/workspace-server.mjs",
+    "tauri:dev:prep": "npm run build:server",
+    "tauri:dev": "node scripts/dev/tauri-dev.mjs",
+    "tauri:build": "npm run download:node && npm run build:client && node scripts/pack/run-tauri-build.mjs"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
@@ -20,6 +29,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.4.0",
     "@types/node": "^20.11.0",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3"

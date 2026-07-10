@@ -171,6 +171,11 @@ export const api = {
   getRun: (jobId: string) => request<RunJob>(`/api/runs/${jobId}`),
   cancelRun: (jobId: string) =>
     request<{ ok: boolean }>(`/api/runs/${jobId}`, { method: "DELETE" }),
+  deleteRuns: (runIds: string[]) =>
+    request<{ deleted: string[]; skipped: Array<{ runId: string; reason: string }> }>(
+      "/api/runs/delete",
+      { method: "POST", body: JSON.stringify({ runIds }) },
+    ),
 };
 
 function draftPayload(draft: ScenarioDraft): Record<string, unknown> {

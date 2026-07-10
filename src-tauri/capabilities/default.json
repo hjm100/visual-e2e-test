@@ -1,0 +1,16 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default capabilities for Visual E2E Test",
+  "windows": ["main", "report-*"],
+  "permissions": [
+    "core:default",
+    "core:webview:allow-create-webview-window",
+    "dialog:allow-save",
+    "fs:allow-write-file",
+    {
+      "identifier": "opener:allow-open-path",
+      "allow": [{ "path": "**" }]
+    }
+  ]
+}

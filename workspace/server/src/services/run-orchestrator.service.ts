@@ -1,9 +1,10 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { existsSync, readdirSync, statSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, rmSync, statSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import type { WorkspaceConfig } from "../config.js";
 import type { ProjectContext } from "../project-context.js";
 import { checkProjectEnv, resolveProjectContext } from "../project-context.js";
+import type { RunArchiveEntry } from "./run-archive.service.js";
 
 export type RunScope = "scenarios" | "module" | "modules" | "all";
 
@@ -117,6 +118,7 @@ export class RunOrchestratorService {
   listJobs(projectId: string): RunJob[] {
     this.reconcileStaleRunningJobs();
     this.reconcileMemoryJobsWithDisk(projectId);
+    this.pruneFinishedJobs();
 
     const diskRuns = this.listDiskRuns(projectId);
     const running = [...activeJobs.values()]
@@ -142,16 +144,107 @@ export class RunOrchestratorService {
   }
 
   resolveRunArtifactPath(projectId: string, runId: string, subPath: string): string | undefined {
-    const filePath = join(resolveProjectContext(this.config.e2eRoot, projectId).runsDir, runId, subPath);
+    const filePath = join(this.runsBase(projectId), runId, subPath);
     if (!existsSync(filePath)) return undefined;
     return filePath;
   }
 
+  resolveRunDir(projectId: string, runId: string): string | undefined {
+    if (!/^\d{14}$/.test(runId)) return undefined;
+    const runDir = join(this.runsBase(projectId), runId);
+    if (!existsSync(runDir) || !statSync(runDir).isDirectory()) return undefined;
+    return runDir;
+  }
+
+  deleteRuns(
+    projectId: string,
+    runIds: string[],
+  ): { deleted: string[]; skipped: Array<{ runId: string; reason: string }> } {
+    const deleted: string[] = [];
+    const skipped: Array<{ runId: string; reason: string }> = [];
+
+    for (const runId of runIds) {
+      if (!/^\d{14}$/.test(runId)) {
+        skipped.push({ runId, reason: "invalid_run_id" });
+        continue;
+      }
+      if (this.isRunLive(projectId, runId)) {
+        skipped.push({ runId, reason: "running" });
+        continue;
+      }
+      const runDir = this.resolveRunDir(projectId, runId);
+      if (!runDir) {
+        skipped.push({ runId, reason: "not_found" });
+        continue;
+      }
+      rmSync(runDir, { recursive: true, force: true });
+      this.cleanupRunReferences(runId);
+      deleted.push(runId);
+    }
+
+    return { deleted, skipped };
+  }
+
+  resolveRunArchiveEntries(
+    projectId: string,
+    runIds: string[],
+  ): { entries: RunArchiveEntry[]; skipped: Array<{ runId: string; reason: string }> } {
+    const entries: RunArchiveEntry[] = [];
+    const skipped: Array<{ runId: string; reason: string }> = [];
+
+    for (const runId of runIds) {
+      if (!/^\d{14}$/.test(runId)) {
+        skipped.push({ runId, reason: "invalid_run_id" });
+        continue;
+      }
+      const runDir = this.resolveRunDir(projectId, runId);
+      if (!runDir) {
+        skipped.push({ runId, reason: "not_found" });
+        continue;
+      }
+      entries.push({ runId, runDir });
+    }
+
+    return { entries, skipped };
+  }
+
+  zipFilename(projectId: string, runIds: string[]): string {
+    if (runIds.length === 1) return `${projectId}-${runIds[0]}.zip`;
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    return `${projectId}-runs-${stamp}.zip`;
+  }
+
+  private isRunLive(projectId: string, runId: string): boolean {
+    for (const [memoryJobId, job] of activeJobs) {
+      if (job.projectId !== projectId || job.status !== "running") continue;
+      if (!this.isLiveRunning(memoryJobId)) continue;
+      const diskId = job.runDir ? basename(job.runDir) : jobAliases.get(memoryJobId);
+      if (diskId === runId || job.jobId === runId) return true;
+    }
+    return false;
+  }
+
+  private cleanupRunReferences(runId: string): void {
+    for (const [memId, alias] of [...jobAliases.entries()]) {
+      if (alias === runId) jobAliases.delete(memId);
+    }
+    for (const [jobId, job] of [...activeJobs.entries()]) {
+      if (job.runDir && basename(job.runDir) === runId) {
+        activeJobs.delete(jobId);
+        this.processes.delete(jobId);
+      }
+    }
+  }
+
   private getDiskJob(runId: string, projectId: string): RunJob | undefined {
     if (!/^\d{14}$/.test(runId)) return undefined;
-    const runDir = join(resolveProjectContext(this.config.e2eRoot, projectId).runsDir, runId);
+    const runDir = join(this.runsBase(projectId), runId);
     if (!existsSync(runDir)) return undefined;
     return this.diskRunFromDir(runDir, projectId);
+  }
+
+  private runsBase(projectId: string): string {
+    return join(this.config.projectsDir, projectId, "runs");
   }
 
   /** 进程已退出但内存 job 未清理的僵尸条目 */
@@ -159,7 +252,11 @@ export class RunOrchestratorService {
     for (const [jobId, job] of [...activeJobs.entries()]) {
       const proc = this.processes.get(jobId);
       if (!proc) {
-        activeJobs.delete(jobId);
+        if (job.status === "running") {
+          job.status = "error";
+          job.error = job.error ?? "进程未启动或已异常退出";
+          job.finishedAt = job.finishedAt ?? new Date().toISOString();
+        }
         continue;
       }
       if (proc.exitCode !== null || proc.signalCode) {
@@ -171,8 +268,18 @@ export class RunOrchestratorService {
         continue;
       }
       if (job.status !== "running" && job.status !== "cancelled") {
-        activeJobs.delete(jobId);
         this.processes.delete(jobId);
+      }
+    }
+  }
+
+  private pruneFinishedJobs(): void {
+    const maxAgeMs = 24 * 60 * 60 * 1000;
+    for (const [jobId, job] of activeJobs) {
+      if (job.status === "running") continue;
+      if (!job.finishedAt) continue;
+      if (Date.now() - new Date(job.finishedAt).getTime() > maxAgeMs) {
+        activeJobs.delete(jobId);
       }
     }
   }
@@ -214,7 +321,7 @@ export class RunOrchestratorService {
     }, 1500);
   }
 
-  /** 磁盘 run 已落盘时建立 alias，列表去重；进程引用保留至 exit */
+  /** 磁盘 run 已落盘时建立 alias，列表去重；内存 job 在匹配后移除 */
   private reconcileMemoryJobsWithDisk(projectId: string): void {
     const diskRuns = this.listDiskRuns(projectId);
     for (const [jobId, job] of [...activeJobs.entries()]) {
@@ -228,6 +335,7 @@ export class RunOrchestratorService {
             return Math.abs(diskStart - memStart) < 120_000;
           })?.jobId;
       if (runId) jobAliases.set(jobId, runId);
+      activeJobs.delete(jobId);
     }
   }
 
@@ -292,8 +400,16 @@ export class RunOrchestratorService {
     if (job.runDir) {
       jobAliases.set(job.jobId, basename(job.runDir));
     }
-    activeJobs.delete(job.jobId);
     this.processes.delete(job.jobId);
+  }
+
+  private resolveNodeBinary(): string {
+    if (this.config.runtime !== "client") {
+      return process.execPath;
+    }
+    const fromEnv = process.env.BUNDLED_NODE?.trim();
+    if (fromEnv && existsSync(fromEnv)) return fromEnv;
+    return process.execPath;
   }
 
   private startProcess(job: RunJob, scope: RunScope = "scenarios", projectId: string): void {
@@ -316,9 +432,19 @@ export class RunOrchestratorService {
     if (job.options.headless) args.push("--headless");
     if (job.options.slowMo) args.push("--slow-mo", String(job.options.slowMo));
 
-    const proc = spawn("node", args, {
+    const nodeBin = this.resolveNodeBinary();
+    const proc = spawn(nodeBin, args, {
       cwd: this.config.e2eRoot,
-      env: { ...process.env, ACTIVE_PROJECT: projectId, RUN_SCOPE: this.buildRunScopeEnv(scope, job) },
+      env: {
+        ...process.env,
+        BUNDLED_NODE: nodeBin,
+        E2E_ROOT: this.config.e2eRoot,
+        PROJECTS_DIR: this.config.projectsDir,
+        CONFIG_DIR: this.config.configDir,
+        CLIENT_MODE: process.env.CLIENT_MODE ?? "",
+        ACTIVE_PROJECT: projectId,
+        RUN_SCOPE: this.buildRunScopeEnv(scope, job),
+      },
       stdio: ["ignore", "pipe", "pipe"],
       detached: process.platform !== "win32",
     });
@@ -355,8 +481,9 @@ export class RunOrchestratorService {
     proc.on("error", (err) => {
       job.status = "error";
       job.error = err.message;
+      job.logs.push(`[system] ${err.message}`);
       job.finishedAt = new Date().toISOString();
-      this.finalizeActiveJob(job);
+      this.processes.delete(job.jobId);
     });
   }
 
@@ -370,7 +497,7 @@ export class RunOrchestratorService {
 
   /** 匹配本次任务开始后创建的 run 目录，避免误关联历史 run */
   private findRunDirForJob(projectId: string, startedAt: string): string | undefined {
-    const base = resolveProjectContext(this.config.e2eRoot, projectId).runsDir;
+    const base = join(this.config.projectsDir, projectId, "runs");
     if (!existsSync(base)) return undefined;
 
     const startedMs = new Date(startedAt).getTime() - 3000;
@@ -389,7 +516,7 @@ export class RunOrchestratorService {
   }
 
   private listDiskRuns(projectId: string): RunJob[] {
-    const base = resolveProjectContext(this.config.e2eRoot, projectId).runsDir;
+    const base = join(this.config.projectsDir, projectId, "runs");
     if (!existsSync(base)) return [];
     const runs: RunJob[] = [];
     for (const name of readdirSync(base)) {

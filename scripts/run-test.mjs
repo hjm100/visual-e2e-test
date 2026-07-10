@@ -6,20 +6,43 @@ import { spawn } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { getE2eRoot, getProjectsDir, getSettingsPath } from "./paths.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const root = resolve(__dirname, "..");
+const root = getE2eRoot();
+
+function resolveNodeBinary() {
+  if (process.env.E2E_RUNTIME !== "client") {
+    return process.execPath || "node";
+  }
+  const fromEnv = process.env.BUNDLED_NODE?.trim();
+  if (fromEnv && existsSync(fromEnv)) return fromEnv;
+  return process.execPath || "node";
+}
+
+function resolveCliLaunch() {
+  const nodeBin = resolveNodeBinary();
+  const distCli = join(root, "dist/cli.js");
+  if (existsSync(distCli)) {
+    return { bin: nodeBin, args: [distCli] };
+  }
+  const tsCli = join(root, "src/cli.ts");
+  if (existsSync(tsCli) && existsSync(join(root, "node_modules/tsx"))) {
+    return { bin: nodeBin, args: ["--import", "tsx", tsCli] };
+  }
+  return { bin: "npx", args: ["tsx", "src/cli.ts"] };
+}
 
 function resolveProjectId(argv) {
   const idx = argv.indexOf("--project");
   if (idx >= 0 && argv[idx + 1]) return argv[idx + 1];
   if (process.env.ACTIVE_PROJECT) return process.env.ACTIVE_PROJECT;
-  const settingsPath = join(root, "config", "settings.json");
+  const settingsPath = getSettingsPath();
   if (existsSync(settingsPath)) {
     const settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
     if (settings.defaultProject) return settings.defaultProject;
   }
-  const projectsDir = join(root, "projects");
+  const projectsDir = getProjectsDir();
   if (!existsSync(projectsDir)) {
     console.error("未找到 projects/ 目录");
     process.exit(1);
@@ -37,7 +60,7 @@ function resolveProjectId(argv) {
 }
 
 function discoverModules(projectId) {
-  const dir = join(root, "projects", projectId, "scenarios");
+  const dir = join(getProjectsDir(), projectId, "scenarios");
   if (!existsSync(dir)) return [];
   return readdirSync(dir, { withFileTypes: true })
     .filter((e) => e.isDirectory() && existsSync(join(dir, e.name, "manifest.json")))
@@ -46,7 +69,7 @@ function discoverModules(projectId) {
 }
 
 function discoverAllModules() {
-  const projectsDir = join(root, "projects");
+  const projectsDir = getProjectsDir();
   if (!existsSync(projectsDir)) return [];
   const projectIds = readdirSync(projectsDir, { withFileTypes: true })
     .filter((e) => e.isDirectory() && existsSync(join(projectsDir, e.name, "project.json")))
@@ -59,6 +82,8 @@ function discoverAllModules() {
 }
 
 function ensureModuleScripts() {
+  if (process.env.CLIENT_MODE === "1" || process.env.CLIENT_MODE === "true") return;
+
   const pkgPath = join(root, "package.json");
   const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
   const modules = discoverAllModules();
@@ -79,8 +104,11 @@ function ensureModuleScripts() {
   }
 
   if (JSON.stringify(existing) !== JSON.stringify(next)) {
-    pkg.scripts = next;
-    writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
+    try {
+      writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
+    } catch {
+      // 只读包内目录（客户端）时跳过
+    }
   }
 }
 
@@ -115,11 +143,24 @@ if (!args.includes("--project")) {
   args.unshift("--project");
 }
 
-const child = spawn("npx", ["tsx", "src/cli.ts", ...args], {
+const { bin, args: cliArgs } = resolveCliLaunch();
+const piped = !process.stdout.isTTY;
+const nodeBin = resolveNodeBinary();
+
+const child = spawn(bin, [...cliArgs, ...args], {
   cwd: root,
-  stdio: "inherit",
-  env: { ...process.env, ACTIVE_PROJECT: projectId },
+  stdio: piped ? "pipe" : "inherit",
+  env: {
+    ...process.env,
+    BUNDLED_NODE: nodeBin,
+    ACTIVE_PROJECT: projectId,
+  },
 });
+
+if (piped) {
+  child.stdout?.on("data", (buf) => process.stdout.write(buf));
+  child.stderr?.on("data", (buf) => process.stderr.write(buf));
+}
 
 function shutdownChild(signal) {
   if (!child.pid || child.killed) return;

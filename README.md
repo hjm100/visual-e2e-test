@@ -20,6 +20,32 @@ npm run test -- --project <your-project-id> --all
 npm run test:all -- --headed
 ```
 
+## 桌面客户端（Tauri）
+
+见 [docs/CLIENT.md](docs/CLIENT.md)。
+
+```bash
+npm install
+npm run setup:rust          # 首次
+source ~/.cargo/env
+npm run build:engine        # 首次或 engine 变更后
+npm run tauri:dev           # 开发：Vite + sidecar，数据在 Storage
+npm run tauri:build         # 打包 .app / .dmg
+```
+
+Tauri 的项目与配置在 Storage，不在仓库 `projects/`：
+
+```bash
+open ~/Library/Application\ Support/com.visual-e2e-test.app/Storage
+```
+
+`npm run workspace` 使用仓库 `projects/`、`config/`，API 端口 **3101**：
+
+```bash
+npm run workspace
+curl -s http://127.0.0.1:3101/api/health   # runtime 应为 workspace
+```
+
 ## 项目结构
 
 ```

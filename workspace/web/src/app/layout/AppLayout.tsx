@@ -30,6 +30,26 @@ const NAV = [
   { key: "/projects", icon: <FolderOutlined />, label: "项目管理" },
 ];
 
+function shortenHomePath(path: string): string {
+  return path.replace(/^\/Users\/[^/]+/, "~");
+}
+
+function formatHealthFooter(health: {
+  runtime?: string;
+  port?: number;
+  projectsDir?: string;
+  e2eRoot: string;
+}): string {
+  const dataPath = shortenHomePath(health.projectsDir ?? health.e2eRoot);
+  return [
+    health.runtime ?? "workspace",
+    health.port != null ? `:${health.port}` : null,
+    dataPath,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
 export function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -66,7 +86,7 @@ export function AppLayout() {
               type="secondary"
               style={{ fontSize: 11, padding: "8px 16px", display: "block", wordBreak: "break-all" }}
             >
-              {healthQuery.data.e2eRoot}
+              {formatHealthFooter(healthQuery.data)}
             </Typography.Text>
           )}
         </Sider>

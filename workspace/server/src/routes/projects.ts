@@ -61,6 +61,7 @@ export function registerProjectRoutes(app: FastifyInstance, config: WorkspaceCon
 export function registerProjectMiddleware(app: FastifyInstance, config: WorkspaceConfig): void {
   app.addHook("onRequest", async (req, reply) => {
     if (req.url.startsWith("/api/health") || req.url.startsWith("/artifacts/")) return;
+    if (req.url.startsWith("/api/runs/artifacts/")) return;
     if (req.url === "/api/projects" || req.url.startsWith("/api/projects/")) return;
     if (req.url.startsWith("/api/config/settings")) return;
     if (!req.url.startsWith("/api/")) return;

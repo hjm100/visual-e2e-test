@@ -1,5 +1,6 @@
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
 import type { AppConfig } from "./config.js";
+import { isClientMode } from "./paths.js";
 
 export class BrowserManager {
   private playwrightBrowser: Browser | null = null;
@@ -30,7 +31,9 @@ export class BrowserManager {
     }
 
     const attempts: (string | undefined)[] = this.config.channel
-      ? [this.config.channel, undefined]
+      ? isClientMode()
+        ? [this.config.channel]
+        : [this.config.channel, undefined]
       : [undefined];
 
     let lastError: Error | null = null;
@@ -47,7 +50,11 @@ export class BrowserManager {
     }
 
     if (!this.playwrightBrowser) {
-      throw new Error(`浏览器启动失败: ${lastError?.message}`);
+      const hint =
+        isClientMode() && this.config.channel
+          ? " 客户端模式请确认已安装 Google Chrome。"
+          : "";
+      throw new Error(`浏览器启动失败: ${lastError?.message}${hint}`);
     }
 
     const contextOpts: Parameters<Browser["newContext"]>[0] = {

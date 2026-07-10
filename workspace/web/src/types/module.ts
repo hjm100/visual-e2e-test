@@ -17,7 +17,11 @@ export interface ScenarioSummary {
 
 export interface HealthResponse {
   ok: boolean;
+  runtime?: "workspace" | "client";
+  port?: number;
   e2eRoot: string;
+  projectsDir?: string;
+  configDir?: string;
   defaultProject?: string;
   projects?: Array<{ id: string; name: string; envReady?: boolean }>;
 }
