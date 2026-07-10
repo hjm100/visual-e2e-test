@@ -29,7 +29,12 @@
     "resources": [
       "resources/app/",
       "resources/node/"
-    ]
+    ],
+    "windows": {
+      "nsis": {
+        "installerHooks": "./windows/hooks.nsh"
+      }
+    }
   },
   "plugins": {}
 }

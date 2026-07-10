@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawn, spawnSync } from "node:child_process";
-import { mkdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { REPO_ROOT } from "../dev/env.mjs";
@@ -41,6 +41,23 @@ function cleanBuildOutput(target) {
   console.log(`已清空 build/${subdir}/`);
 }
 
+function cleanStaleDmgTempFiles(rustTarget) {
+  const bundleMacos = rustTarget
+    ? join(process.env.CARGO_TARGET_DIR, rustTarget, "release/bundle/macos")
+    : join(process.env.CARGO_TARGET_DIR, "release/bundle/macos");
+  if (!existsSync(bundleMacos)) return;
+
+  for (const name of readdirSync(bundleMacos)) {
+    if (!name.startsWith("rw.") || !name.endsWith(".dmg")) continue;
+    rmSync(join(bundleMacos, name), { force: true });
+  }
+}
+
+function prepareMacDmgBuildEnv() {
+  // Tauri 在 CI=true 时为 bundle_dmg.sh 传入 --skip-jenkins，跳过 Finder AppleScript
+  process.env.CI = "true";
+}
+
 function cleanStaleBundleResources(rustTarget) {
   const base = rustTarget
     ? join(process.env.CARGO_TARGET_DIR, rustTarget, "release/resources")
@@ -78,6 +95,25 @@ function run(cmd, args, label) {
   });
 }
 
+function ensureLlvmRcPath() {
+  if (spawnSync("llvm-rc", ["--version"], { encoding: "utf8" }).status === 0) return;
+
+  // Homebrew 安装的 llvm 为 keg-only，不在默认 PATH 中
+  for (const dir of ["/opt/homebrew/opt/llvm/bin", "/usr/local/opt/llvm/bin"]) {
+    if (!existsSync(join(dir, "llvm-rc"))) continue;
+    const parts = (process.env.PATH ?? "").split(":");
+    if (!parts.includes(dir)) {
+      process.env.PATH = `${dir}:${process.env.PATH ?? ""}`;
+    }
+    if (spawnSync("llvm-rc", ["--version"], { encoding: "utf8" }).status === 0) return;
+  }
+
+  console.error("Windows 交叉编译需要 llvm-rc（编译 Windows 资源文件）:");
+  console.error("  HOMEBREW_NO_AUTO_UPDATE=1 brew install llvm");
+  console.error('  export PATH="/opt/homebrew/opt/llvm/bin:$PATH"');
+  process.exit(1);
+}
+
 function ensureWindowsCrossToolchain() {
   const targetList = spawnSync("rustup", ["target", "list", "--installed"], { encoding: "utf8" });
   if (!targetList.stdout.includes(WINDOWS_TARGET)) {
@@ -92,6 +128,8 @@ function ensureWindowsCrossToolchain() {
     console.error("  cargo install cargo-xwin");
     process.exit(1);
   }
+
+  ensureLlvmRcPath();
 }
 
 function macStep() {
@@ -147,7 +185,7 @@ async function downloadNodeSidecars(target) {
         ? ["scripts/pack/download-node.mjs", currentNodePlatform()]
         : ["scripts/pack/download-node.mjs", "win32-x64"];
 
-  const label = target === "all" ? "download-node --all" : `download-node ${args[2]}`;
+  const label = target === "all" ? "download-node --all" : `download-node ${args[1]}`;
   if ((await run("node", args, label)) !== 0) process.exit(1);
 }
 
@@ -167,11 +205,31 @@ const results = [];
 
 for (const step of plan) {
   cleanStaleBundleResources(step.rustTarget);
-  const code = await run("npx", ["tauri", "build", ...step.tauriArgs], step.label);
-  if (code !== 0) process.exit(code);
+  if (process.platform === "darwin" && !step.rustTarget) {
+    cleanStaleDmgTempFiles(step.rustTarget);
+    prepareMacDmgBuildEnv();
+  }
 
-  const { subdir, copied } = copyBundlesToBuild(REPO_ROOT, step.nodePlatform, step.rustTarget);
-  results.push({ subdir, copied });
+  const code = await run("npx", ["tauri", "build", ...step.tauriArgs], step.label);
+
+  let copied = [];
+  let subdir = "";
+  try {
+    ({ subdir, copied } = copyBundlesToBuild(REPO_ROOT, step.nodePlatform, step.rustTarget));
+    results.push({ subdir, copied });
+  } catch (err) {
+    if (code !== 0) {
+      console.error(err.message);
+      process.exit(code);
+    }
+    throw err;
+  }
+
+  if (code !== 0) {
+    console.warn("\n打包未完全成功，已复制的产物仍保留在 build/");
+    for (const name of copied) console.warn(`  ${name}`);
+    if (copied.length === 0) process.exit(code);
+  }
 }
 
 console.log("\n安装包已输出到 build/");

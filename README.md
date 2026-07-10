@@ -22,34 +22,17 @@ npm run test:all -- --headed
 
 ## 桌面客户端（Tauri）
 
-见 [docs/CLIENT.md](docs/CLIENT.md)。
+Tauri WebView + Node sidecar，与 CLI / `workspace` 模式**数据隔离**。详见 [docs/CLIENT.md](docs/CLIENT.md)。
 
 ```bash
-npm install
-npm run setup:rust          # 首次
-source ~/.cargo/env
-npm run build:engine        # 首次或 engine 变更后
-npm run tauri:dev           # 开发：:3100 + visual-e2e-test/Storage
-npm run tauri:build:mac      # macOS → build/macos/（.app 用 :6100）
-npm run tauri:build:win      # Windows → build/windows/
-npm run tauri:build:all      # mac + win
+npm run setup:rust && source ~/.cargo/env   # 首次
+npm run build:engine                        # 首次或 engine 变更后
+npm run tauri:dev                           # 客户端开发
+npm run tauri:build:mac                     # macOS 安装包 → build/macos/
+npm run tauri:build:win                     # Windows 安装包 → build/windows/
 ```
 
-Tauri 客户端数据与仓库 `projects/` 分离：
-
-```bash
-# tauri:dev
-open ~/Library/Application\ Support/visual-e2e-test/Storage
-# 安装的 .app
-open ~/Library/Application\ Support/com.visual-e2e-test.app/Storage
-```
-
-`npm run workspace` 使用仓库 `projects/`、`config/`，API 端口 **3101**：
-
-```bash
-npm run workspace
-curl -s http://127.0.0.1:3101/api/health   # runtime 应为 workspace
-```
+运行模式（`workspace` / `tauri:dev` / `.app`）的端口与数据目录见 CLIENT.md。
 
 ## 项目结构
 

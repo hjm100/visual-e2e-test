@@ -1,5 +1,8 @@
+mod installer_cleanup;
 mod sidecar;
 mod storage;
+
+use installer_cleanup::cleanup_if_needed;
 
 use sidecar::{start_sidecar, stop_sidecar, SidecarState};
 use storage::open_storage_in_file_manager;
@@ -23,6 +26,13 @@ pub fn run() {
         .manage(sidecar_state)
         .setup(|app| {
             let is_dev = cfg!(debug_assertions);
+
+            if !is_dev {
+                if let Err(err) = cleanup_if_needed(app.handle()) {
+                    eprintln!("installer cleanup: {err}");
+                }
+            }
+
             let state = app.state::<SidecarState>();
             let (_layout, base_url) = start_sidecar(app.handle(), &state, is_dev)?;
 

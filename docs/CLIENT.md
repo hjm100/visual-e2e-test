@@ -26,50 +26,28 @@ Tauri (Rust WebView)
 | 工具 | 用途 |
 |------|------|
 | Node.js 20+ | 开发与构建 |
-| Rust + Cargo | Tauri 编译（[rustup.rs](https://rustup.rs)） |
+| Rust + Cargo | Tauri 编译（`npm run setup:rust`） |
 | macOS: Xcode CLT | WebView / 打包 |
 | Windows: WebView2 | 运行时（Win10+ 通常已带） |
 | Google Chrome | 运行 E2E 测试（客户端默认 `channel: chrome`） |
 
-## Web 开发
+macOS 上交叉编译 Windows 安装包还需：
 
 ```bash
-npm install
-npm run workspace          # Web :5173，API :3101
+rustup target add x86_64-pc-windows-msvc
+cargo install cargo-xwin
+brew install llvm
 ```
 
-`E2E_RUNTIME=workspace`：`projects/`、`config/` 在仓库目录；API 端口 **3101**。
+## 运行模式
 
-`/api/health` 应返回 `"runtime":"workspace"`、`"port":3101`。
+| 模式 | 启动方式 | `E2E_RUNTIME` | API 端口 | 数据目录 |
+|------|----------|---------------|----------|----------|
+| Web 开发 | `npm run workspace` | `workspace` | `3101` | 仓库 `projects/`、`config/` |
+| 客户端开发 | `npm run tauri:dev` | `client` | `3100` | `visual-e2e-test/Storage/` |
+| 生产 | 安装的 `.app` | `client` | `6100` | `com.visual-e2e-test.app/Storage/` |
 
-## Tauri 开发
-
-### 首次环境
-
-```bash
-npm install
-npm run setup:rust         # 安装 Rust toolchain（仅需一次）
-source ~/.cargo/env        # 或重启终端
-npm run build:engine       # 生成 dist/cli.js
-```
-
-### 日常启动
-
-```bash
-npm run tauri:dev
-```
-
-`tauri dev` 会执行 `build:server`，并启动 Vite（`:5173`）。Sidecar 在 `127.0.0.1:3100` 起 API；WebView 加载 Vite，Vite 将 `/api` 代理到 `:3100`。
-
-**可与已安装的 `.app` 同时运行**（`.app` 使用 `:6100` 与独立 Storage）。
-
-### 运行模式（脚本契约）
-
-| 命令 | `E2E_RUNTIME` | API 端口 | 数据目录 |
-|------|---------------|----------|----------|
-| `npm run workspace` | `workspace` | `3101` | 仓库 `projects/`、`config/` |
-| `npm run tauri:dev` | `client` | `3100` | `visual-e2e-test/Storage/` |
-| 安装的 `.app` | `client` | `6100` | `com.visual-e2e-test.app/Storage/` |
+`/api/health` 的 `runtime` 与 `port` 用于区分当前连的是哪个实例。
 
 ### dev 与 build 的差异
 
@@ -82,80 +60,60 @@ npm run tauri:dev
 | Node | 系统 PATH 中的 `node` | 包内 `resources/node/{platform}/bin/node` |
 | `CLIENT_MODE` | `0` | `1` |
 
-仓库内 `projects/` 仅 `npm run workspace` 使用；客户端 dev 与 prod **数据隔离**。
+`tauri:dev` 可与已安装的 `.app` 同时运行（端口与 Storage 独立）。
 
-### 确认当前连的是哪个 server
+## 开发
 
-DevTools → Network → `/api/health`：
-
-- `"runtime":"workspace"`、`"port":3101` → 网页开发 server
-- `"runtime":"client"`、`"port":3100`、仓库 `e2eRoot` → `tauri:dev` sidecar
-- `"runtime":"client"`、`"port":6100`、`e2eRoot` 含 `.app` → 已安装 `.app`
-
-### 用户数据目录（Storage）
-
-**开发（tauri:dev）** — macOS：
-
-```
-~/Library/Application Support/visual-e2e-test/Storage/
-  ├── projects/
-  └── config/settings.json
-```
-
-**生产（.app）** — macOS：
-
-```
-~/Library/Application Support/com.visual-e2e-test.app/Storage/
-  ├── projects/
-  └── config/settings.json
-```
-
-打开目录：
+### Web 工作台
 
 ```bash
-# dev
-open ~/Library/Application\ Support/visual-e2e-test/Storage
-# .app
-open ~/Library/Application\ Support/com.visual-e2e-test.app/Storage
+npm install
+npm run workspace          # Web :5173，API :3101
 ```
+
+### Tauri 客户端
+
+```bash
+npm install
+npm run setup:rust         # 首次
+source ~/.cargo/env
+npm run build:engine       # 生成 dist/cli.js
+npm run tauri:dev
+```
+
+`tauri dev` 执行 `build:server` 并启动 Vite（`:5173`）。Sidecar 在 `127.0.0.1:3100` 起 API；WebView 加载 Vite，Vite 将 `/api` 代理到 `:3100`。
+
+### 用户数据目录
 
 App 菜单 **Visual E2E Test → 打开数据目录** 打开当前模式对应路径。
 
+```bash
+# tauri:dev（macOS）
+open ~/Library/Application\ Support/visual-e2e-test/Storage
+# .app（macOS）
+open ~/Library/Application\ Support/com.visual-e2e-test.app/Storage
+```
+
 首次启动时 sidecar 创建 `Storage/projects`、`Storage/config`；若 `config/settings.json` 不存在，从 `E2E_ROOT/config/settings.json` 复制默认配置。
-
-### 清理旧 Launcher 遗留
-
-若存在 `~/Library/Application Support/visual-e2e-test/launcher.lock.json`（旧 Launcher 单实例锁），可安全删除；Tauri 不再使用该文件。
 
 ## 打包
 
 ```bash
-npm run tauri:build:mac    # 仅 macOS → build/macos/
-npm run tauri:build:win    # 仅 Windows → build/windows/
-npm run tauri:build:all    # mac + win（macOS 上 win 为交叉编译）
+npm run tauri:build:mac    # macOS → build/macos/
+npm run tauri:build:win    # Windows → build/windows/
+npm run tauri:build:all    # mac + win
 npm run tauri:build        # 同 tauri:build:mac
 ```
 
-一条命令完成：同步 `package.json` 版本 → 清空对应 `build/` 子目录 → 下载 Node sidecar → 构建 client → 打包。
+流程：同步版本 → 清空 `build/` 对应子目录 → 下载 Node sidecar → `tauri build` → 复制产物。
 
 | 命令 | 产物 |
 |------|------|
 | `tauri:build:mac` | `build/macos/`（`.app` + `.dmg`） |
-| `tauri:build:win` | `build/windows/`（`.exe` / `.msi`） |
-| `tauri:build:all` | 以上两者（macOS 上 win 为交叉编译 `.exe`） |
-
-**Windows 完整 `.msi`** 需在 Windows 上运行 `tauri:build:win`。
-
-首次在 macOS 交叉编译 Windows 需安装：
-
-```bash
-rustup target add x86_64-pc-windows-msvc
-cargo install cargo-xwin
-```
+| `tauri:build:win` | `build/windows/`（`.exe`；`.msi` 需在 Windows 上构建） |
+| `tauri:build:all` | 上述两者（macOS 上 win 为交叉编译） |
 
 Rust 中间产物在 `src-tauri/target/`。
-
-安装或替换 `/Applications/Visual E2E Test.app` 后启动；数据在 `com.visual-e2e-test.app/Storage/`，与 `tauri:dev` 分开。
 
 ### 包内容
 
@@ -163,10 +121,6 @@ Rust 中间产物在 `src-tauri/target/`。
 - Node sidecar 二进制
 - engine、server、web、scripts、template、node_modules
 - 不含 Playwright Chromium（`channel: chrome`）
-
-### 首次启动
-
-Sidecar 初始化 Storage（见「用户数据目录」）。
 
 ## 环境变量（Sidecar / 启动脚本）
 
@@ -185,59 +139,16 @@ Sidecar 初始化 Storage（见「用户数据目录」）。
 
 ### 运行中心 spawn node ENOENT
 
-- `workspace`：确认 `curl :3101/api/health` 为 `"runtime":"workspace"`；勿手动设置 `BUNDLED_NODE`。
-- `tauri:dev` / `.app`：Node 路径见上表；`.app` 在 `Resources/resources/node/darwin-arm64/bin/node`。
+- `workspace`：确认 `curl :3101/api/health` 返回 `"runtime":"workspace"`；勿手动设置 `BUNDLED_NODE`。
+- `tauri:dev` / `.app`：`.app` 使用包内 `Resources/resources/node/{platform}/bin/node`。
 
-### Rust / rustup
+### Rust 工具链
 
 ```bash
 npm run setup:rust
-```
-
-手动：
-
-```bash
-rm -rf ~/.rustup/toolchains/stable-aarch64-apple-darwin
-rustup toolchain install stable --profile minimal
-rustup default stable
-```
-
-`connection reset` 时：
-
-```bash
-export RUSTUP_DIST_SERVER=https://rsproxy.cn
-export RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
-rm -rf ~/.rustup/toolchains/stable-aarch64-apple-darwin
-rustup toolchain install stable --profile minimal
-rustup default stable
-```
-
-`~/.cargo/config.toml`：
-
-```toml
-[source.crates-io]
-replace-with = "rsproxy"
-
-[source.rsproxy]
-registry = "sparse+https://rsproxy.cn/index/"
-```
-
-### Rust 未安装
-
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source ~/.cargo/env
 ```
 
 ### 浏览器启动失败
 
-客户端模式：`channel: chrome`，不回退 Playwright Chromium。
-
-### 打包缺少产物
-
-```bash
-npm run build:client
-```
-
-### Windows 安装包
-
-`.msi` 在 Windows 上构建；macOS 产出 `.dmg` / zip。
+客户端模式使用 `channel: chrome`，需本机安装 Google Chrome。
