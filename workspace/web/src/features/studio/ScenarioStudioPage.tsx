@@ -222,7 +222,7 @@ export function ScenarioStudioPage() {
         />
       </Sider>
 
-      <Layout style={{ background: "#f0f2f5" }}>
+      <Layout className="studio-page__main">
         <StudioHeader
           dirty={dirty}
           saving={saveScenarioMut.isPending}
@@ -241,7 +241,7 @@ export function ScenarioStudioPage() {
             message={issues.map((i) => i.message).join("; ")}
             closable
             onClose={() => setIssues([])}
-            style={{ margin: "0 12px" }}
+            className="studio-page__alert"
           />
         )}
 
@@ -349,6 +349,7 @@ export function ScenarioStudioPage() {
                   <strong>保存路径：</strong>{savePath}
                 </div>
                 <JsonPreview
+                  embedded
                   data={showExpanded ? expanded : draft}
                   loading={expandMut.isPending}
                 />

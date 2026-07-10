@@ -14,6 +14,7 @@ import { EnvConfigPanel } from "./EnvConfigPanel";
 import { formatRunSelection } from "./run-selection";
 import { canManageRunArtifacts, resolveRunId } from "./run-id";
 import { downloadRunsArchive } from "./download-runs";
+import { ScrollPane } from "../../components/layout/ScrollPane";
 
 export function RunCenterPage() {
   const qc = useQueryClient();
@@ -127,7 +128,7 @@ export function RunCenterPage() {
   };
 
   return (
-    <div style={{ padding: 24 }}>
+    <ScrollPane>
       <Typography.Title level={4}>运行中心</Typography.Title>
 
       <EnvConfigPanel />
@@ -283,12 +284,12 @@ export function RunCenterPage() {
             <Typography.Text type="secondary" style={{ display: "block", marginBottom: 12 }}>
               {formatRunSelection(detailJob)}
             </Typography.Text>
-            <pre style={{ maxHeight: "calc(100vh - 200px)", overflow: "auto", background: "#fafafa", padding: 12, fontSize: 12 }}>
+            <pre style={{ maxHeight: 480, overflow: "auto", background: "#fafafa", padding: 12, fontSize: 12 }}>
               {detailJob.logs.join("\n") || "暂无日志"}
             </pre>
           </>
         )}
       </Drawer>
-    </div>
+    </ScrollPane>
   );
 }

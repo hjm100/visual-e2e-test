@@ -6,6 +6,7 @@ import {
 import { EditOutlined, SyncOutlined, SaveOutlined } from "@ant-design/icons";
 import { api } from "../../api/client";
 import { useProject } from "../../context/ProjectContext";
+import { ScrollPane } from "../../components/layout/ScrollPane";
 
 export function ProfileListPage() {
   const qc = useQueryClient();
@@ -83,7 +84,7 @@ export function ProfileListPage() {
   });
 
   return (
-    <div style={{ padding: 24 }}>
+    <ScrollPane>
       <Typography.Title level={4}>产品画像</Typography.Title>
       <Alert
         style={{ marginBottom: 16 }}
@@ -188,6 +189,6 @@ export function ProfileListPage() {
           />
         </Spin>
       </Drawer>
-    </div>
+    </ScrollPane>
   );
 }

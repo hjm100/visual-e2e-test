@@ -4,6 +4,7 @@ import { Typography, Button, Table, Tag, Space, Select, message } from "antd";
 import { SafetyCertificateOutlined } from "@ant-design/icons";
 import { api } from "../../api/client";
 import { useProject } from "../../context/ProjectContext";
+import { ScrollPane } from "../../components/layout/ScrollPane";
 
 interface BatchResult {
   module: string;
@@ -38,7 +39,7 @@ export function ValidateCenterPage() {
   );
 
   return (
-    <div style={{ padding: 24 }}>
+    <ScrollPane>
       <Typography.Title level={4}>校验中心</Typography.Title>
       <Space style={{ marginBottom: 16 }}>
         <Select
@@ -90,6 +91,6 @@ export function ValidateCenterPage() {
           },
         ]}
       />
-    </div>
+    </ScrollPane>
   );
 }

@@ -1,37 +1,26 @@
 import { Spin, Typography } from "antd";
+import "./json-preview.css";
 
 interface JsonPreviewProps {
   data: unknown;
   loading?: boolean;
   title?: string;
+  /** Inline flow — no inner scroll (parent scroll container owns scrolling). */
+  embedded?: boolean;
 }
 
-export function JsonPreview({ data, loading, title }: JsonPreviewProps) {
+export function JsonPreview({ data, loading, title, embedded }: JsonPreviewProps) {
   const text = data !== undefined ? JSON.stringify(data, null, 2) : "";
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+    <div className={embedded ? "json-preview json-preview--embedded" : "json-preview"}>
       {title && (
-        <Typography.Text type="secondary" style={{ padding: "12px 16px", display: "block" }}>
+        <Typography.Text type="secondary" className="json-preview__title">
           {title}
         </Typography.Text>
       )}
-      <Spin spinning={loading ?? false} style={{ flex: 1 }}>
-        <pre
-          style={{
-            margin: 0,
-            padding: 16,
-            flex: 1,
-            overflow: "auto",
-            background: "#fafafa",
-            borderTop: "1px solid #f0f0f0",
-            fontSize: 12,
-            lineHeight: 1.6,
-            height: "100%",
-          }}
-        >
-          {text}
-        </pre>
+      <Spin spinning={loading ?? false} className="json-preview__spin">
+        <pre className="json-preview__code">{text}</pre>
       </Spin>
     </div>
   );

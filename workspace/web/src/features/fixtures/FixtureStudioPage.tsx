@@ -216,7 +216,7 @@ export function FixtureStudioPage({ kind }: FixtureStudioPageProps) {
         />
       </Sider>
 
-      <Layout style={{ background: "#f0f2f5" }}>
+      <Layout className="studio-page__main">
         <FixtureStudioHeader
           label={label}
           dirty={dirty}
@@ -290,6 +290,7 @@ export function FixtureStudioPage({ kind }: FixtureStudioPageProps) {
                   <strong>保存路径：</strong>{savePath}
                 </div>
                 <JsonPreview
+                  embedded
                   data={isRule ? ruleDraftToRaw(draft as RuleDraft) : macroDraftToRaw(draft)}
                   loading={isLoadingFixture}
                 />

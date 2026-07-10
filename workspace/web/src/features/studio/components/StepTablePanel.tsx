@@ -1,9 +1,11 @@
+import { useRef } from "react";
 import { Table, Button, Space, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { ReactNode } from "react";
 import { ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons";
 import type { StepDraft } from "../../../types/scenario";
 import { stepTypeLabel, stepTypeShortLabel } from "../../../constants/field-meta";
+import { useElementHeight } from "../../../hooks/useElementHeight";
 
 interface StepTablePanelProps {
   steps: StepDraft[];
@@ -22,9 +24,15 @@ function stepSummary(step: StepDraft): string {
   return step.selector ?? String(step.value ?? "");
 }
 
+const TABLE_HEAD_RESERVE = 39;
+
 export function StepTablePanel({
   steps, selectedIndex, onSelect, onChange, embedded, readOnly, renderTags,
 }: StepTablePanelProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const scrollY = useElementHeight(containerRef, TABLE_HEAD_RESERVE);
+  const tableScrollY = embedded ? undefined : scrollY > 0 ? scrollY : undefined;
+
   const move = (index: number, dir: -1 | 1) => {
     const j = index + dir;
     if (j < 0 || j >= steps.length) return;
@@ -85,7 +93,10 @@ export function StepTablePanel({
   ];
 
   return (
-    <div className="studio-step-table">
+    <div
+      ref={containerRef}
+      className={embedded ? "studio-step-table" : "studio-step-table studio-step-table--fill"}
+    >
       <Table<StepDraft>
         rowKey={(_, index) => String(index)}
         size="small"
@@ -95,7 +106,7 @@ export function StepTablePanel({
         dataSource={steps}
         scroll={{
           x: embedded ? 360 : 640,
-          y: embedded ? "calc(100vh - 340px)" : "calc(100vh - 380px)",
+          y: tableScrollY,
         }}
         rowClassName={(_, index) =>
           index === selectedIndex ? "studio-table-row--active" : ""

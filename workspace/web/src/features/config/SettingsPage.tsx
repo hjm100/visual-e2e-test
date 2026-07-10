@@ -8,6 +8,7 @@ import { api } from "../../api/client";
 import { SETTINGS_FIELDS } from "../../constants/config-field-meta";
 import type { SettingsDraft } from "../../types/settings";
 import { JsonPreview } from "../../components/JsonPreview";
+import { ScrollPane } from "../../components/layout/ScrollPane";
 
 const NAV_WAIT_OPTIONS = [
   { value: "load", label: "load" },
@@ -72,11 +73,15 @@ export function SettingsPage() {
   };
 
   if (!draft) {
-    return <div style={{ padding: 24 }}>加载中…</div>;
+    return (
+      <ScrollPane>
+        加载中…
+      </ScrollPane>
+    );
   }
 
   return (
-    <div style={{ padding: 24, maxWidth: 960, overflow: "auto", height: "100%" }}>
+    <ScrollPane>
       <Typography.Title level={4}>全局配置</Typography.Title>
 
       <Alert
@@ -303,8 +308,8 @@ export function SettingsPage() {
       </Form>
 
       <Card size="small" title="JSON 预览" style={{ marginTop: 8 }}>
-        <JsonPreview data={draft} />
+        <JsonPreview embedded data={draft} />
       </Card>
-    </div>
+    </ScrollPane>
   );
 }
