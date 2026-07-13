@@ -25,7 +25,10 @@
     "electron:build:mac:arm64": "node scripts/pack/run-electron-build.mjs mac arm64",
     "electron:build:mac:x64": "node scripts/pack/run-electron-build.mjs mac x64",
     "electron:build:win": "node scripts/pack/run-electron-build.mjs win",
-    "electron:build:all": "node scripts/pack/run-electron-build.mjs all"
+    "electron:build:all": "node scripts/pack/run-electron-build.mjs all",
+    "release": "node scripts/release.mjs",
+    "pub": "node scripts/pub.mjs",
+    "prepare": "husky"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
@@ -33,9 +36,13 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
     "@types/node": "^20.11.0",
     "electron": "^33.4.11",
     "electron-builder": "^25.1.8",
+    "husky": "^9.1.7",
+    "semver": "^7.8.5",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3"
   },
