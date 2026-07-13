@@ -1,0 +1,66 @@
+name: Electron Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+env:
+  ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
+
+jobs:
+  build-macos:
+    name: macOS (arm64 + x64 + Windows cross)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm ci --prefix workspace/server
+          npm ci --prefix workspace/web
+
+      - name: Build all desktop packages
+        run: npm run electron:build:all
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-macos-and-win
+          path: |
+            build/macos-arm64/
+            build/macos-x64/
+            build/windows/
+          if-no-files-found: error
+
+  build-windows:
+    name: Windows (native)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm ci --prefix workspace/server
+          npm ci --prefix workspace/web
+
+      - name: Build Windows installer
+        run: npm run electron:build:win
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-windows-native
+          path: build/windows/
+          if-no-files-found: error

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Stage bundled app resources for Tauri sidecar (Resources/app).
+ * Stage bundled app resources for Electron extraResources (resources/app).
  */
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, "../..");
-const stageRoot = join(repoRoot, "src-tauri", "resources", "app");
+const stageRoot = join(repoRoot, "electron", "resources", "app");
 
 const REQUIRED_BUILDS = [
   ["dist", join(repoRoot, "dist")],

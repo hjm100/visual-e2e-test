@@ -7,7 +7,7 @@ export const REPO_ROOT = resolve(__dirname, "../..");
 
 export const PORTS = {
   workspace: 3101,
-  /** tauri:dev sidecar */
+  /** electron:dev sidecar */
   clientDev: 3100,
   /** installed .app sidecar */
   clientProd: 6100,
@@ -41,6 +41,6 @@ export function applyWorkspaceEnv() {
   process.env.VITE_API_URL = `http://127.0.0.1:${PORTS.workspace}`;
 }
 
-export function applyTauriDevWebEnv() {
+export function applyClientDevWebEnv() {
   process.env.VITE_API_URL = `http://127.0.0.1:${PORTS.clientDev}`;
 }

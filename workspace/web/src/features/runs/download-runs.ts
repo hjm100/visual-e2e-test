@@ -1,4 +1,4 @@
-import { isTauri } from "@tauri-apps/api/core";
+import { isElectron } from "../../utils/runtime";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
@@ -29,19 +29,12 @@ function triggerAnchorDownload(blob: Blob, filename: string): void {
   URL.revokeObjectURL(href);
 }
 
-async function saveBlobInTauri(blob: Blob, filename: string): Promise<DownloadRunsResult> {
-  const { save } = await import("@tauri-apps/plugin-dialog");
-  const { writeFile } = await import("@tauri-apps/plugin-fs");
-  const { downloadDir, join } = await import("@tauri-apps/api/path");
+async function saveBlobInElectron(blob: Blob, filename: string): Promise<DownloadRunsResult> {
+  const api = window.electronAPI;
+  if (!api) return saveBlobInBrowser(blob, filename);
 
-  const path = await save({
-    defaultPath: await join(await downloadDir(), filename),
-    filters: [{ name: "ZIP 压缩包", extensions: ["zip"] }],
-    title: "保存运行报告",
-  });
+  const path = await api.saveFile(filename, await blob.arrayBuffer());
   if (!path) return { status: "cancelled" };
-
-  await writeFile(path, new Uint8Array(await blob.arrayBuffer()));
   return { status: "saved", path };
 }
 
@@ -93,8 +86,8 @@ export async function downloadRunsArchive(
   const blob = await res.blob();
   const filename = parseFilename(res.headers.get("Content-Disposition") ?? "", projectId, runIds);
 
-  if (isTauri()) {
-    return saveBlobInTauri(blob, filename);
+  if (isElectron()) {
+    return saveBlobInElectron(blob, filename);
   }
   return saveBlobInBrowser(blob, filename);
 }

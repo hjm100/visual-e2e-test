@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Download official Node.js binary into src-tauri/resources/node for sidecar packaging.
+ * Download official Node.js binary into electron/resources/node for sidecar packaging.
  */
 import { createWriteStream, copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { execSync } from "node:child_process";
@@ -11,7 +11,7 @@ import { currentNodePlatform } from "./platform.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const NODE_VERSION = process.env.NODE_SIDEcar_VERSION ?? "22.14.0";
-const outRoot = join(__dirname, "../../src-tauri/resources/node");
+const outRoot = join(__dirname, "../../electron/resources/node");
 
 const PLATFORMS = {
   "darwin-arm64": {

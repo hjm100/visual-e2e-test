@@ -3,29 +3,29 @@
   "version": "1.0.0",
   "description": "Visual workbench for JSON-driven E2E automated testing",
   "type": "module",
+  "main": "electron/dist/main.js",
   "scripts": {
     "test": "node scripts/run-test.mjs",
     "build": "tsc",
     "build:engine": "tsc",
     "build:server": "npm run build --prefix workspace/server",
     "build:web": "npm run build --prefix workspace/web",
+    "build:electron": "tsc -p electron/tsconfig.json",
     "build:client": "npm run build:engine && npm run build:server && npm run build:web && npm run stage:sidecar",
     "stage:sidecar": "node scripts/pack/stage-app.mjs",
     "download:node": "node scripts/pack/download-node.mjs",
     "download:node:all": "node scripts/pack/download-node.mjs --all",
     "generate:icons": "node scripts/pack/generate-icons.mjs",
-    "setup:rust": "bash scripts/setup-rust-mirror.sh",
     "typecheck": "tsc --noEmit",
     "test:all": "node scripts/run-test.mjs",
     "workspace": "node scripts/dev/workspace.mjs",
     "workspace:web": "node scripts/dev/workspace-web.mjs",
     "workspace:server": "node scripts/dev/workspace-server.mjs",
-    "tauri:dev:prep": "npm run build:server",
-    "tauri:dev": "node scripts/dev/tauri-dev.mjs",
-    "tauri:build": "node scripts/pack/run-tauri-build.mjs mac",
-    "tauri:build:mac": "node scripts/pack/run-tauri-build.mjs mac",
-    "tauri:build:win": "node scripts/pack/run-tauri-build.mjs win",
-    "tauri:build:all": "node scripts/pack/run-tauri-build.mjs all"
+    "electron:dev": "node scripts/dev/electron-dev.mjs",
+    "electron:build:mac:arm64": "node scripts/pack/run-electron-build.mjs mac arm64",
+    "electron:build:mac:x64": "node scripts/pack/run-electron-build.mjs mac x64",
+    "electron:build:win": "node scripts/pack/run-electron-build.mjs win",
+    "electron:build:all": "node scripts/pack/run-electron-build.mjs all"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
@@ -33,9 +33,53 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.4.0",
     "@types/node": "^20.11.0",
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3"
+  },
+  "build": {
+    "appId": "com.visual-e2e-test.app",
+    "productName": "Visual E2E Test",
+    "directories": {
+      "buildResources": "electron/icons"
+    },
+    "files": [
+      "electron/dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "electron/resources/app",
+        "to": "app",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "electron/resources/node",
+        "to": "node",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "icon": "electron/icons/icon.icns",
+      "category": "public.app-category.developer-tools"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "electron/icons/icon.ico"
+    },
+    "dmg": {
+      "title": "Visual E2E Test"
+    }
   }
 }

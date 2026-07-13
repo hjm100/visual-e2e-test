@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Generate minimal placeholder icons for Tauri packaging.
+ * Generate minimal placeholder icons for Electron packaging.
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import zlib from "node:zlib";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const iconsDir = join(__dirname, "../../src-tauri/icons");
+const iconsDir = join(__dirname, "../../electron/icons");
 
 function crc32(buf) {
   let c = ~0;
@@ -61,7 +61,6 @@ function solidPng(size, r, g, b) {
 mkdirSync(iconsDir, { recursive: true });
 writeFileSync(join(iconsDir, "32x32.png"), solidPng(32, 37, 99, 235));
 writeFileSync(join(iconsDir, "128x128.png"), solidPng(128, 37, 99, 235));
-writeFileSync(join(iconsDir, "128x128@2x.png"), solidPng(256, 37, 99, 235));
 writeFileSync(join(iconsDir, "icon.png"), solidPng(512, 37, 99, 235));
 console.log(`Icons written to ${iconsDir}`);
-console.log("Run: npx tauri icon src-tauri/icons/icon.png  (requires macOS sips/iconutil for .icns/.ico)");
+console.log("For .icns/.ico use electron-icon-builder or platform tools on icon.png");

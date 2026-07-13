@@ -20,19 +20,20 @@ npm run test -- --project <your-project-id> --all
 npm run test:all -- --headed
 ```
 
-## 桌面客户端（Tauri）
+## 桌面客户端（Electron）
 
-Tauri WebView + Node sidecar，与 CLI / `workspace` 模式**数据隔离**。详见 [docs/CLIENT.md](docs/CLIENT.md)。
+Electron WebView + Node sidecar，与 CLI / `workspace` 模式**数据隔离**。详见 [docs/CLIENT.md](docs/CLIENT.md)。
 
 ```bash
-npm run setup:rust && source ~/.cargo/env   # 首次
 npm run build:engine                        # 首次或 engine 变更后
-npm run tauri:dev                           # 客户端开发
-npm run tauri:build:mac                     # macOS 安装包 → build/macos/
-npm run tauri:build:win                     # Windows 安装包 → build/windows/
+npm run electron:dev                        # 客户端开发
+npm run electron:build:all                  # macOS：arm64 + x64 + Windows 一次打包
+npm run electron:build:mac:arm64            # 仅 Apple Silicon
+npm run electron:build:mac:x64              # 仅 Intel Mac
+npm run electron:build:win                  # 仅 Windows（macOS 上可交叉编译）
 ```
 
-运行模式（`workspace` / `tauri:dev` / `.app`）的端口与数据目录见 CLIENT.md。
+运行模式（`workspace` / `electron:dev` / `.app`）的端口与数据目录见 CLIENT.md。
 
 ## 项目结构
 
@@ -52,6 +53,7 @@ visual-e2e-test/
 │   ├── engine/                # ScenarioRunner / StepExecutor
 │   ├── runner/                # ModuleRunner / RunSession
 │   └── cli.ts
+├── electron/                  # 桌面客户端（main / sidecar / 打包资源）
 └── workspace/                 # Visual E2E Test 工作台（server + web）
 ```
 
