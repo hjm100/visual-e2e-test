@@ -13,7 +13,7 @@ interface FixtureMetaPanelProps {
 export function FixtureMetaPanel({ draft, isNew, isRule, onChange }: FixtureMetaPanelProps) {
   return (
     <div style={{ padding: "12px 16px" }}>
-      <Form layout="vertical" size="small">
+      <Form layout="vertical">
         <Row gutter={16}>
           <Col span={12}>
             <Form.Item label={FIXTURE_FIELDS.id.label} tooltip={FIXTURE_FIELDS.id.tooltip}>

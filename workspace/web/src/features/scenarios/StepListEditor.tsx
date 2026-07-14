@@ -1,7 +1,8 @@
 import { Form, Input, InputNumber, Select, Space, Button } from "antd";
 import { DeleteOutlined, ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons";
-import type { StepDraft } from "../../types/scenario";
+import type { StepDraft, StepType } from "../../types/scenario";
 import { STEP_TYPES, MATCH_RULES } from "../../types/scenario";
+import { createEmptyStep, defaultFieldsForType } from "../../utils/scenario-serialize";
 
 interface StepListEditorProps {
   steps: StepDraft[];
@@ -27,9 +28,11 @@ export function StepListEditor({ steps, onChange, macroIds = [] }: StepListEdito
   };
 
   const add = () => {
-    const nums = steps.map((s) => parseInt(s.stepId.replace(/\D/g, ""), 10)).filter((n) => !Number.isNaN(n));
-    const id = `s${(nums.length ? Math.max(...nums) : 0) + 1}`;
-    onChange([...steps, { stepId: id, type: "click", desc: "", selector: "" }]);
+    onChange([...steps, createEmptyStep(steps)]);
+  };
+
+  const changeType = (index: number, type: StepType) => {
+    update(index, { type, ...defaultFieldsForType(type) });
   };
 
   return (
@@ -43,7 +46,7 @@ export function StepListEditor({ steps, onChange, macroIds = [] }: StepListEdito
               value={step.type}
               style={{ width: 120 }}
               options={STEP_TYPES.map((t) => ({ value: t, label: t }))}
-              onChange={(type) => update(i, { type })}
+              onChange={(type) => changeType(i, type)}
             />
             <Button size="small" icon={<ArrowUpOutlined />} onClick={() => move(i, -1)} disabled={i === 0} />
             <Button size="small" icon={<ArrowDownOutlined />} onClick={() => move(i, 1)} disabled={i === steps.length - 1} />
@@ -53,21 +56,21 @@ export function StepListEditor({ steps, onChange, macroIds = [] }: StepListEdito
             <Form.Item label="描述">
               <Input value={step.desc} onChange={(e) => update(i, { desc: e.target.value })} />
             </Form.Item>
-            <Form.Item label="stepId">
+            <Form.Item label="stepId" required>
               <Input value={step.stepId} onChange={(e) => update(i, { stepId: e.target.value })} />
             </Form.Item>
             {["click", "hover", "input", "keyboard"].includes(step.type) && (
-              <Form.Item label="selector">
+              <Form.Item label="selector" required>
                 <Input value={step.selector} onChange={(e) => update(i, { selector: e.target.value })} />
               </Form.Item>
             )}
             {step.type === "link" && (
-              <Form.Item label="url">
+              <Form.Item label="url" required>
                 <Input value={step.url} onChange={(e) => update(i, { url: e.target.value })} />
               </Form.Item>
             )}
             {["input", "wait", "screenshot", "log", "keyboard", "macro"].includes(step.type) && (
-              <Form.Item label="value">
+              <Form.Item label="value" required={step.type !== "input"}>
                 <Input
                   value={step.value == null ? "" : String(step.value)}
                   onChange={(e) => update(i, { value: e.target.value })}
@@ -75,7 +78,7 @@ export function StepListEditor({ steps, onChange, macroIds = [] }: StepListEdito
               </Form.Item>
             )}
             {step.type === "macro" && (
-              <Form.Item label="宏 ID">
+              <Form.Item label="宏 ID" required>
                 <Select
                   value={step.value as string}
                   options={macroIds.map((id) => ({ value: id, label: id }))}
@@ -87,13 +90,16 @@ export function StepListEditor({ steps, onChange, macroIds = [] }: StepListEdito
             )}
             {step.type === "verify" && (
               <>
-                <Form.Item label="verifyValue">
+                <Form.Item label="verifyValue" required>
                   <Input value={step.verifyValue} onChange={(e) => update(i, { verifyValue: e.target.value })} />
                 </Form.Item>
-                <Form.Item label="expectValue">
+                <Form.Item
+                  label="expectValue"
+                  required={!["visible", "hidden", "urlContains"].includes(step.matchRule ?? "contains")}
+                >
                   <Input value={step.expectValue} onChange={(e) => update(i, { expectValue: e.target.value })} />
                 </Form.Item>
-                <Form.Item label="matchRule">
+                <Form.Item label="matchRule" required>
                   <Select
                     value={step.matchRule ?? "contains"}
                     options={MATCH_RULES.map((r) => ({ value: r, label: r }))}

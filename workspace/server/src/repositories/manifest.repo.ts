@@ -50,6 +50,15 @@ export class ManifestRepository {
     this.write(module, { module, description, scenarios: [] });
   }
 
+  createModule(module: string, description?: string): void {
+    const path = this.manifestPath(module);
+    if (existsSync(path)) {
+      throw new Error(`模块已存在: ${module}`);
+    }
+    mkdirSync(dirname(path), { recursive: true });
+    this.write(module, { module, description, scenarios: [] });
+  }
+
   private manifestPath(module: string): string {
     return join(this.project.scenariosDir, module, "manifest.json");
   }

@@ -10,7 +10,7 @@ export class VerifyHandler implements IStepHandler<VerifyStep> {
 
   async execute(ctx: RunContext, step: VerifyStep): Promise<void> {
     const expectValue = ctx.resolve(step.expectValue);
-    const rule = step.matchRule;
+    const rule = step.matchRule ?? MatchRule.Contains;
     ctx.logInfo(`验证: ${rule} expect="${expectValue}"`);
 
     const passed = await evaluateVerify(ctx, step);
@@ -22,7 +22,7 @@ export class VerifyHandler implements IStepHandler<VerifyStep> {
   }
 
   private failureMessage(ctx: RunContext, step: VerifyStep): string {
-    const rule = step.matchRule;
+    const rule = step.matchRule ?? MatchRule.Contains;
     const expectValue = ctx.resolve(step.expectValue);
 
     if (rule === MatchRule.Visible || rule === MatchRule.Hidden) {

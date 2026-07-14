@@ -16,7 +16,7 @@ export function ScenarioMetaPanel({
 }: ScenarioMetaPanelProps) {
   return (
     <div style={{ padding: "12px 16px" }}>
-      <Form layout="vertical" size="small">
+      <Form layout="vertical">
         <Row gutter={16}>
           {isNew && (
             <Col span={8}>
@@ -30,7 +30,7 @@ export function ScenarioMetaPanel({
             </Col>
           )}
           <Col span={isNew ? 8 : 12}>
-            <Form.Item label={SCENARIO_FIELDS.id.label} tooltip={SCENARIO_FIELDS.id.tooltip}>
+            <Form.Item label={SCENARIO_FIELDS.id.label} tooltip={SCENARIO_FIELDS.id.tooltip} required>
               <Input
                 value={draft.id}
                 placeholder={SCENARIO_FIELDS.id.placeholder}
@@ -39,7 +39,7 @@ export function ScenarioMetaPanel({
             </Form.Item>
           </Col>
           <Col span={isNew ? 8 : 12}>
-            <Form.Item label={SCENARIO_FIELDS.name.label} tooltip={SCENARIO_FIELDS.name.tooltip}>
+            <Form.Item label={SCENARIO_FIELDS.name.label} tooltip={SCENARIO_FIELDS.name.tooltip} required>
               <Input
                 value={draft.name}
                 placeholder={SCENARIO_FIELDS.name.placeholder}
@@ -87,7 +87,7 @@ export function ScenarioMetaPanel({
         {draft.mode === "extends" && (
           <Row gutter={16} style={{ marginTop: 8 }}>
             <Col span={12}>
-              <Form.Item label={SCENARIO_FIELDS.extends.label} tooltip={SCENARIO_FIELDS.extends.tooltip}>
+              <Form.Item label={SCENARIO_FIELDS.extends.label} tooltip={SCENARIO_FIELDS.extends.tooltip} required>
                 <Select
                   value={draft.extends}
                   placeholder="选择规则模板"

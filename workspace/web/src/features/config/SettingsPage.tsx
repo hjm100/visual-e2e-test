@@ -116,7 +116,7 @@ export function SettingsPage() {
         </Button>
       </div>
 
-      <Form layout="vertical" size="small">
+      <Form layout="vertical">
         <Card size="small" title={SETTINGS_FIELDS.browser.label} style={{ marginBottom: 12 }}>
           <Row gutter={16}>
             <Col span={6}>

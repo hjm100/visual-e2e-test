@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -10,6 +10,8 @@ import { useProject } from "../../context/ProjectContext";
 import {
   emptyScenario, rawToDraft, type ScenarioDraft,
 } from "../../types/scenario";
+import { compactScenarioPayload } from "../../utils/scenario-serialize";
+import { validateScenarioDraft, hasScenarioErrors } from "../../utils/scenario-validate";
 import { StepListEditor } from "./StepListEditor";
 import { JsonPreview } from "../../components/JsonPreview";
 import { RunDetailDrawer } from "../runs/RunDetailDrawer";
@@ -105,22 +107,56 @@ export function ScenarioEditorPage() {
     onError: (e: Error) => message.error(e.message),
   });
 
+  const applyClientValidation = (): boolean => {
+    const local = validateScenarioDraft(draft);
+    if (hasScenarioErrors(local)) {
+      setIssues(local);
+      message.warning(local.map((i) => i.message).join("; "));
+      return false;
+    }
+    return true;
+  };
+
+  const previewDraft = useMemo(() => compactScenarioPayload(draft), [draft]);
+
   if (!isNew && scenarioQuery.isLoading) return <Spin style={{ margin: 48 }} />;
 
   return (
     <div style={{ padding: 24 }}>
       <Space style={{ marginBottom: 16 }}>
         <Button icon={<ArrowLeftOutlined />} onClick={() => navigate("/scenarios")}>返回</Button>
-        <Button type="primary" icon={<SaveOutlined />} loading={saveMut.isPending} onClick={() => saveMut.mutate()}>
+        <Button
+          type="primary"
+          icon={<SaveOutlined />}
+          loading={saveMut.isPending}
+          onClick={() => {
+            if (!applyClientValidation()) return;
+            saveMut.mutate();
+          }}
+        >
           保存
         </Button>
-        <Button icon={<CheckOutlined />} onClick={() => validateMut.mutate()} loading={validateMut.isPending}>
+        <Button
+          icon={<CheckOutlined />}
+          onClick={() => {
+            if (!applyClientValidation()) return;
+            validateMut.mutate();
+          }}
+          loading={validateMut.isPending}
+        >
           校验
         </Button>
         <Button icon={<EyeOutlined />} onClick={() => expandMut.mutate()} loading={expandMut.isPending}>
           展开预览
         </Button>
-        <Button icon={<PlayCircleOutlined />} onClick={() => runMut.mutate()} loading={runMut.isPending}>
+        <Button
+          icon={<PlayCircleOutlined />}
+          onClick={() => {
+            if (!applyClientValidation()) return;
+            runMut.mutate();
+          }}
+          loading={runMut.isPending}
+        >
           试运行
         </Button>
       </Space>
@@ -249,7 +285,7 @@ export function ScenarioEditorPage() {
             label: "预览",
             children: (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, height: 480 }}>
-                <JsonPreview data={draft} title="当前草稿" />
+                <JsonPreview data={previewDraft} title="当前草稿" />
                 <JsonPreview data={expanded} loading={expandMut.isPending} title="展开后" />
               </div>
             ),
