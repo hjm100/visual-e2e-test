@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 发包：校验本机安装包 → 推送 main → 打 tag → 用 gh 创建 GitHub Release 并上传资产。
+ * 发包：校验本机安装包 → 推送 master → 打 tag → 用 gh 创建 GitHub Release 并上传资产。
  *
  * 发版前在本机准备：
  *   npm run download:chromium -- all
@@ -16,7 +16,7 @@ import { readVersion } from "./lib/version.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..");
-const DEFAULT_BRANCH = "main";
+const DEFAULT_BRANCH = "master";
 const TAG_PREFIX = "v";
 
 const ASSET_GLOBS = [

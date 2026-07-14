@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 创建发布分支：从 main 拉出 release-v{version}，bump version.js / package.json。
+ * 创建发布分支：从 master 拉出 release-v{version}，bump version.js / package.json。
  *
  * 用法: node scripts/release.mjs [patch|minor|major|x.y.z]
  */
@@ -10,7 +10,7 @@ import { stdin as input, stdout as output } from "node:process";
 import semver from "semver";
 import { readVersion, writeVersion } from "./lib/version.mjs";
 
-const DEFAULT_BRANCH = "main";
+const DEFAULT_BRANCH = "master";
 const RELEASE_PREFIX = "release-v";
 
 function git(...args) {

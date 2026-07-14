@@ -110,7 +110,7 @@ npm run electron:build:win
 | `electron:build:mac:x64` | `build/macos-x64/`（`.app` + `.dmg`） |
 | `electron:build:win` | `build/windows/`（`.exe`） |
 
-发版：`npm run release` → 合并 main → 本机 `download:chromium -- all` + `electron:build:all` → `npm run pub`（打 tag并用 `gh` 上传 Release）。`electron-release.yml` 仅在 Release published 后触发下载站。
+发版：`npm run release` → 合并 master → 本机 `download:chromium -- all` + `electron:build:all` → `npm run pub`（打 tag并用 `gh` 上传 Release）。`electron-release.yml` 仅在 Release published 后触发下载站。
 
 ### 包内容
 
