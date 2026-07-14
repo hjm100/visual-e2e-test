@@ -8,6 +8,7 @@ import { execSync, spawnSync } from "node:child_process";
 import { confirm, input, select } from "@inquirer/prompts";
 import semver from "semver";
 import { REPO_ROOT } from "./dev/env.mjs";
+import { bumpChangelog } from "./lib/changelog.mjs";
 import { readVersion, writeVersion } from "./lib/version.mjs";
 
 const DEFAULT_BRANCH = "master";
@@ -116,7 +117,7 @@ async function main() {
 
   if (process.stdin.isTTY && !arg) {
     const ok = await confirm({
-      message: `将创建分支 ${releaseBranch}，版本 ${curVer} => ${newVer}，是否同意？`,
+      message: `将创建分支 ${releaseBranch}，版本 ${curVer} => ${newVer}，并更新 CHANGELOG，是否同意？`,
       default: true,
     });
     if (!ok) {
@@ -129,9 +130,10 @@ async function main() {
   exec(`git checkout -b ${releaseBranch} origin/${DEFAULT_BRANCH}`);
 
   writeVersion(newVer);
-  logInfo("已更新 version.js、package.json");
+  bumpChangelog(curVer, newVer);
+  logInfo("已更新 version.js、package.json、CHANGELOG.md");
 
-  exec("git add version.js package.json package-lock.json");
+  exec("git add version.js package.json package-lock.json CHANGELOG.md");
   exec(`git commit -m "chore(release): bump version to ${newVer}"`);
   exec(`git push -u origin ${releaseBranch}`);
 
