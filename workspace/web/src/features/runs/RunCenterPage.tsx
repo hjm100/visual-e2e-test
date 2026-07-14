@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Typography, Table, Button, Tag, Drawer, Popconfirm, message, Space,
+  Typography, Table, Button, Tag, Popconfirm, message, Space,
 } from "antd";
 import { DeleteOutlined, DownloadOutlined, ReloadOutlined } from "@ant-design/icons";
 import { api, canOpenReport, reportUrl } from "../../api/client";
@@ -11,16 +11,25 @@ import { useProject } from "../../context/ProjectContext";
 import type { RunJob } from "../../types/module";
 import { RunLaunchPanel } from "./RunLaunchPanel";
 import { EnvConfigPanel } from "./EnvConfigPanel";
+import { RunDetailDrawer } from "./RunDetailDrawer";
 import { formatRunSelection } from "./run-selection";
 import { canCancelJob, canDeleteJob, canManageRunArtifacts, resolveDeleteId, resolveRunId } from "./run-id";
 import { downloadRunsArchive } from "./download-runs";
 import { ScrollPane } from "../../components/layout/ScrollPane";
 
+const STATUS_COLOR: Record<string, string> = {
+  running: "processing",
+  passed: "success",
+  failed: "error",
+  cancelled: "default",
+  error: "error",
+};
+
 export function RunCenterPage() {
   const qc = useQueryClient();
   const location = useLocation();
   const { projectId } = useProject();
-  const [detailJob, setDetailJob] = useState<RunJob | null>(null);
+  const [detailJobId, setDetailJobId] = useState<string | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
 
   const runsQuery = useQuery({
@@ -62,28 +71,8 @@ export function RunCenterPage() {
 
   useEffect(() => {
     const jobId = (location.state as { jobId?: string })?.jobId;
-    if (jobId) {
-      api.getRun(jobId).then(setDetailJob).catch(() => undefined);
-    }
+    if (jobId) setDetailJobId(jobId);
   }, [location.state]);
-
-  useEffect(() => {
-    if (!detailJob || detailJob.status !== "running") return;
-    const fresh = runsQuery.data?.find((j) => j.jobId === detailJob.jobId);
-    if (fresh) setDetailJob(fresh);
-  }, [runsQuery.data, detailJob?.jobId, detailJob?.status]);
-
-  const statusColor: Record<string, string> = {
-    running: "processing",
-    passed: "success",
-    failed: "error",
-    cancelled: "default",
-    error: "error",
-  };
-
-  const openDetail = (row: RunJob) => {
-    setDetailJob(row);
-  };
 
   const rows = runsQuery.data ?? [];
 
@@ -178,7 +167,7 @@ export function RunCenterPage() {
           {
             title: "状态",
             dataIndex: "status",
-            render: (s: string) => <Tag color={statusColor[s]}>{s}</Tag>,
+            render: (s: string) => <Tag color={STATUS_COLOR[s]}>{s}</Tag>,
           },
           {
             title: "运行范围",
@@ -227,7 +216,12 @@ export function RunCenterPage() {
             align: "center",
             render: (_, row) => (
               <Space size={4}>
-                <Button type="link" size="small" onClick={() => openDetail(row)} style={{ paddingInline: 0 }}>
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={() => setDetailJobId(row.jobId)}
+                  style={{ paddingInline: 0 }}
+                >
                   详情
                 </Button>
                 {canCancelJob(row) ? (
@@ -263,51 +257,11 @@ export function RunCenterPage() {
         ]}
       />
 
-      <Drawer
-        title={detailJob ? `运行详情: ${detailJob.jobId}` : "运行详情"}
-        open={!!detailJob}
-        onClose={() => setDetailJob(null)}
-        width={720}
-        extra={
-          detailJob && (canOpenReport(detailJob) || canManageRunArtifacts(detailJob)) ? (
-            <Space>
-              {canOpenReport(detailJob) ? (
-                <ReportLink href={reportUrl(detailJob)!}>打开报告</ReportLink>
-              ) : null}
-              {canManageRunArtifacts(detailJob) && resolveRunId(detailJob) && projectId ? (
-                <Button
-                  type="link"
-                  size="small"
-                  onClick={() => void handleDownload([resolveRunId(detailJob)!])}
-                >
-                  下载 ZIP
-                </Button>
-              ) : null}
-            </Space>
-          ) : null
-        }
-      >
-        {detailJob && (
-          <>
-            <Tag color={statusColor[detailJob.status]} style={{ marginBottom: 12 }}>{detailJob.status}</Tag>
-            <Typography.Text type="secondary" style={{ display: "block", marginBottom: 12 }}>
-              {formatRunSelection(detailJob)}
-            </Typography.Text>
-            <pre
-              style={{
-                maxHeight: 480,
-                overflow: "auto",
-                background: "#fafafa",
-                padding: 12,
-                fontSize: 12,
-                userSelect: "text",
-              }}
-            >
-              {detailJob.logs.join("\n") || "暂无日志"}
-            </pre>
-          </>
-        )}
-      </Drawer>
+      <RunDetailDrawer
+        jobId={detailJobId}
+        open={!!detailJobId}
+        onClose={() => setDetailJobId(null)}
+      />
     </ScrollPane>
   );
 }

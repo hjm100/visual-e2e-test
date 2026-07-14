@@ -12,6 +12,8 @@ import {
 } from "../../types/scenario";
 import { StepListEditor } from "./StepListEditor";
 import { JsonPreview } from "../../components/JsonPreview";
+import { RunDetailDrawer } from "../runs/RunDetailDrawer";
+import { seedRunCache } from "../runs/seed-run-cache";
 
 export function ScenarioEditorPage() {
   const navigate = useNavigate();
@@ -29,6 +31,7 @@ export function ScenarioEditorPage() {
   const [file, setFile] = useState(`${draft.id || "new_scenario"}.json`);
   const [expanded, setExpanded] = useState<unknown>();
   const [issues, setIssues] = useState<{ level: string; message: string }[]>([]);
+  const [runJobId, setRunJobId] = useState<string | null>(null);
 
   const scenarioQuery = useQuery({
     queryKey: ["scenario", projectId, module, filePath],
@@ -96,7 +99,8 @@ export function ScenarioEditorPage() {
     },
     onSuccess: (job) => {
       message.info("试跑已启动");
-      navigate("/runs", { state: { jobId: job.jobId } });
+      seedRunCache(qc, projectId, job);
+      setRunJobId(job.jobId);
     },
     onError: (e: Error) => message.error(e.message),
   });
@@ -251,6 +255,11 @@ export function ScenarioEditorPage() {
             ),
           },
         ]}
+      />
+      <RunDetailDrawer
+        jobId={runJobId}
+        open={!!runJobId}
+        onClose={() => setRunJobId(null)}
       />
     </div>
   );

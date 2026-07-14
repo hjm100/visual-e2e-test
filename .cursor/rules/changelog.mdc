@@ -1,0 +1,47 @@
+---
+description: CHANGELOG.md 文案规范。编辑或补充更新日志时遵循。
+globs: CHANGELOG.md
+alwaysApply: false
+---
+
+# CHANGELOG 文案规范
+
+面向**使用产品的人**书写，不是写给开发者的 commit 摘要。
+
+## 结构（保持不动）
+
+- 版本标题：`## [x.y.z](compare链接) (日期)`，由 `npm run release` 自动插入
+- 分组：`### Features` / `### Fixes`（必要时可加 `### Improvements`）
+- 每条：主 bullet + 缩进子 bullet 补充细节
+
+## 文案原则
+
+1. **说用户能感知的变化**，不写实现细节（组件名、hook 名、API、编码、字段名等）
+2. **不用 commit 前缀**（`feat(web):`、`fix(server):` 等留给 git message）
+3. **主 bullet 一句话概括**，子 bullet 说明具体场景或行为
+4. **中文为主**，语气中性、简短
+
+## 示例
+
+```
+# ❌ 开发者视角
+- feat(web): 场景管理运行后就地展开详情抽屉并实时刷新日志
+  - 抽取 RunDetailDrawer 与 useRunDetail 供运行中心复用
+
+# ✅ 用户视角
+- 场景管理内可直接查看运行进度
+  - 在场景编辑页点击运行后，不再跳转到运行中心
+  - 右侧弹出运行详情，日志随测试进行实时更新
+```
+
+```
+# ❌
+- 非 running 且存在 reportFile 时允许查看报告
+
+# ✅
+- 失败、取消等已结束的任务，只要生成了报告即可查看
+```
+
+## release 后补内容
+
+版本标题由脚本生成后，在对应版本块下按上述规范手写 Features / Fixes 条目；不必与 commit message 逐条对应。

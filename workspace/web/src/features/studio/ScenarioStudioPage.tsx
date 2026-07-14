@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Layout, Modal, message, Alert, Spin, Button } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
@@ -15,12 +15,13 @@ import { StudioHeader } from "./components/StudioHeader";
 import { StudioSection } from "./components/StudioSection";
 import { ImportProfileModal } from "./components/ImportProfileModal";
 import { JsonPreviewDrawer, type JsonPreviewMode } from "../../components/JsonPreviewDrawer";
+import { RunDetailDrawer } from "../runs/RunDetailDrawer";
+import { seedRunCache } from "../runs/seed-run-cache";
 import "./studio.css";
 
 const { Sider, Content } = Layout;
 
 export function ScenarioStudioPage() {
-  const navigate = useNavigate();
   const [search] = useSearchParams();
   const qc = useQueryClient();
   const { projectId } = useProject();
@@ -37,6 +38,7 @@ export function ScenarioStudioPage() {
   const [previewMode, setPreviewMode] = useState<JsonPreviewMode>("draft");
   const [issues, setIssues] = useState<{ level: string; message: string }[]>([]);
   const [importOpen, setImportOpen] = useState(false);
+  const [runJobId, setRunJobId] = useState<string | null>(null);
 
   const macrosQuery = useQuery({ queryKey: ["macros", projectId], queryFn: api.macros, enabled: !!projectId });
   const rulesQuery = useQuery({ queryKey: ["rules", projectId], queryFn: api.rules, enabled: !!projectId });
@@ -145,7 +147,8 @@ export function ScenarioStudioPage() {
       }),
     onSuccess: (job) => {
       message.success("运行已启动");
-      navigate("/runs", { state: { jobId: job.jobId } });
+      seedRunCache(qc, projectId, job);
+      setRunJobId(job.jobId);
     },
     onError: (e: Error) => message.error(e.message),
   });
@@ -391,6 +394,12 @@ export function ScenarioStudioPage() {
         module={activeModule}
         onClose={() => setImportOpen(false)}
         onImported={handleImport}
+      />
+
+      <RunDetailDrawer
+        jobId={runJobId}
+        open={!!runJobId}
+        onClose={() => setRunJobId(null)}
       />
     </Layout>
   );

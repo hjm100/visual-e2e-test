@@ -4,9 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [1.1.0](https://github.com/visual-e2e/visual-e2e-test/compare/v1.0.0...v1.1.0) (2026-07-14)
 
+### Features
+
+- 场景管理内可直接查看运行进度
+  - 在场景编辑页点击运行后，不再跳转到运行中心
+  - 右侧弹出运行详情，日志随测试进行实时更新
+
 ### Fixes
 
-- fix(web): 优化运行中心报告查看与日志编码
-  - 非 running 且存在 reportFile 时允许查看报告
-  - Web/Electron 复用同一报告窗口，报告内日志链接同窗打开
-  - 运行产物接口为文本类型补充 charset=utf-8，修复日志中文乱码
+- 运行中心报告与日志查看体验优化
+  - 失败、取消等已结束的任务，只要生成了报告即可查看
+  - 多次打开报告，或在报告内查看日志、录屏，均复用同一窗口
+  - 修复日志中文显示乱码的问题
