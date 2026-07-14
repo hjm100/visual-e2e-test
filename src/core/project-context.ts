@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { resolveProjectsDir, resolveSettingsPath } from "./paths.js";
 
 export interface ProjectMeta {
   id: string;
@@ -20,7 +21,7 @@ export interface ProjectContext {
 }
 
 export function getProjectsDir(e2eRoot: string): string {
-  return join(e2eRoot, "projects");
+  return resolveProjectsDir(e2eRoot);
 }
 
 export function listProjectIds(e2eRoot: string): string[] {
@@ -42,7 +43,7 @@ export function readProjectMeta(e2eRoot: string, projectId: string): ProjectMeta
 }
 
 export function resolveProjectContext(e2eRoot: string, projectId: string): ProjectContext {
-  const root = resolve(e2eRoot, "projects", projectId);
+  const root = resolve(getProjectsDir(e2eRoot), projectId);
   if (!existsSync(join(root, "project.json"))) {
     throw new Error(`项目不存在: ${projectId}`);
   }
@@ -69,7 +70,7 @@ export function resolveDefaultProjectId(e2eRoot: string, preferred?: string): st
   const fromEnv = process.env.ACTIVE_PROJECT?.trim();
   if (fromEnv && ids.includes(fromEnv)) return fromEnv;
 
-  const settingsPath = join(e2eRoot, "config", "settings.json");
+  const settingsPath = resolveSettingsPath(e2eRoot);
   if (existsSync(settingsPath)) {
     const settings = JSON.parse(readFileSync(settingsPath, "utf-8")) as { defaultProject?: string };
     if (settings.defaultProject && ids.includes(settings.defaultProject)) {

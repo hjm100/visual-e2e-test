@@ -30,6 +30,26 @@ const NAV = [
   { key: "/projects", icon: <FolderOutlined />, label: "项目管理" },
 ];
 
+function shortenHomePath(path: string): string {
+  return path.replace(/^\/Users\/[^/]+/, "~");
+}
+
+function formatHealthFooter(health: {
+  runtime?: string;
+  port?: number;
+  projectsDir?: string;
+  e2eRoot: string;
+}): string {
+  const dataPath = shortenHomePath(health.projectsDir ?? health.e2eRoot);
+  return [
+    health.runtime ?? "workspace",
+    health.port != null ? `:${health.port}` : null,
+    dataPath,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
 export function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -40,38 +60,35 @@ export function AppLayout() {
   const healthQuery = useQuery({ queryKey: ["health"], queryFn: api.health });
 
   return (
-    <Layout style={{ minHeight: "100vh" }}>
+    <Layout className="app-shell">
       <AppHeader />
-      <Layout>
+      <Layout className="app-shell__body">
         <Sider
+          className="app-shell__sider"
           collapsible
           collapsed={collapsed}
           onCollapse={setCollapsed}
           width={220}
           collapsedWidth={64}
           theme="light"
-          style={{ borderRight: "1px solid #f0f0f0" }}
         >
           <Menu
+            className="app-shell__sider-menu"
             mode="inline"
             inlineCollapsed={collapsed}
             selectedKeys={[selected]}
             items={NAV}
             onClick={({ key }) => navigate(key)}
-            style={{ borderRight: 0 }}
           />
 
           {!collapsed && healthQuery.data && (
-            <Typography.Text
-              type="secondary"
-              style={{ fontSize: 11, padding: "8px 16px", display: "block", wordBreak: "break-all" }}
-            >
-              {healthQuery.data.e2eRoot}
+            <Typography.Text type="secondary" className="app-shell__sider-footer">
+              {formatHealthFooter(healthQuery.data)}
             </Typography.Text>
           )}
         </Sider>
 
-        <Content style={{ background: "#fff", overflow: "hidden" }}>
+        <Content className="app-shell__main">
           <Outlet key={projectId} />
         </Content>
       </Layout>

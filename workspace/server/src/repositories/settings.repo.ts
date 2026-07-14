@@ -1,5 +1,5 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 import type { WorkspaceConfig } from "../config.js";
 import { settingsSchema, type SettingsDefinition } from "../schemas/settings.schema.js";
 
@@ -7,7 +7,7 @@ export class SettingsRepository {
   private readonly path: string;
 
   constructor(config: WorkspaceConfig) {
-    this.path = join(config.e2eRoot, "config", "settings.json");
+    this.path = config.settingsPath;
   }
 
   read(): SettingsDefinition {
@@ -20,6 +20,7 @@ export class SettingsRepository {
 
   write(data: unknown): SettingsDefinition {
     const parsed = settingsSchema.parse(data);
+    mkdirSync(dirname(this.path), { recursive: true });
     writeFileSync(this.path, `${JSON.stringify(parsed, null, 2)}\n`, "utf-8");
     return parsed;
   }

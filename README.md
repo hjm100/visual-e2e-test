@@ -8,7 +8,10 @@
 
 ```bash
 npm install
-npx playwright install chromium
+npm run download:chromium                   # 当前平台 Chromium → playwright-browsers/
+npm run download:chromium -- all            # darwin-arm64 / darwin-x64 / win32-x64
+npm run download:chromium -- win32-x64      # 指定平台
+npm run download:chromium -- all --force
 
 # 业务项目在 projects/{id}/ 下（本地自建，默认不提交 git）
 # 脚手架模版见根目录 template/；通过工作台「新建项目」从模版创建
@@ -19,6 +22,23 @@ npm run test -- --project <your-project-id> --login
 npm run test -- --project <your-project-id> --all
 npm run test:all -- --headed
 ```
+
+## 桌面客户端（Electron）
+
+Electron WebView + Node sidecar，与 CLI / `workspace` 模式**数据隔离**。详见 [docs/CLIENT.md](docs/CLIENT.md)。
+
+```bash
+npm run build:engine                        # 首次或 engine 变更后
+npm run electron:dev                        # 客户端开发
+npm run download:chromium -- all            # 打包前三套 Chromium
+npm run electron:build:all                  # 本机：arm64 + x64 + Windows
+npm run electron:build:mac:arm64
+npm run electron:build:mac:x64
+npm run electron:build:win
+npm run pub                                 # 本机产物上传 GitHub Release（须 gh + 已 build）
+```
+
+运行模式与发版细节见 [docs/CLIENT.md](docs/CLIENT.md)。
 
 ## 项目结构
 
@@ -32,12 +52,14 @@ visual-e2e-test/
 ├── projects/                  # 业务项目（本地自建，gitignore）
 │   └── .gitkeep
 ├── config/settings.json       # 浏览器、超时、defaultProject
+├── playwright-browsers/       # Chromium（download:chromium）
 ├── src/
 │   ├── types/                 # StepType 枚举 + Step 实体
 │   ├── handlers/              # 按 type 分发的 Handler
 │   ├── engine/                # ScenarioRunner / StepExecutor
 │   ├── runner/                # ModuleRunner / RunSession
 │   └── cli.ts
+├── electron/                  # 桌面客户端（main / sidecar / 打包资源）
 └── workspace/                 # Visual E2E Test 工作台（server + web）
 ```
 

@@ -1,0 +1,33 @@
+name: Electron Release
+
+# 安装包在本机打包后由 npm run pub 上传；本 workflow 仅在 Release 发布后触发站点。
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SITE_REPO: hjm100/visual-e2e-sky
+
+jobs:
+  notify-site:
+    name: Trigger download site
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger site redeploy
+        if: ${{ secrets.SITE_DEPLOY_TOKEN != '' }}
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.SITE_DEPLOY_TOKEN }}
+          repository: ${{ env.SITE_REPO }}
+          event-type: release-published
+          client-payload: '{"version": "${{ github.event.release.tag_name || github.ref_name }}"}'
+
+      - name: Site dispatch skipped
+        if: ${{ secrets.SITE_DEPLOY_TOKEN == '' }}
+        run: |
+          echo "::warning::SITE_DEPLOY_TOKEN not set — visual-e2e-sky deploy was not triggered."
+          echo "Create a PAT with repo scope and add it as SITE_DEPLOY_TOKEN in this repository."

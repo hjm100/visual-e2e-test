@@ -3,16 +3,33 @@
   "version": "1.0.0",
   "description": "Visual workbench for JSON-driven E2E automated testing",
   "type": "module",
+  "main": "electron/dist/main.js",
   "scripts": {
     "test": "node scripts/run-test.mjs",
     "build": "tsc",
+    "build:engine": "tsc",
+    "build:server": "npm run build --prefix workspace/server",
+    "build:web": "npm run build --prefix workspace/web",
+    "build:electron": "tsc -p electron/tsconfig.json",
+    "build:client": "npm run build:engine && npm run build:server && npm run build:web && npm run stage:sidecar",
+    "stage:sidecar": "node scripts/pack/stage-app.mjs",
+    "download:node": "node scripts/pack/download-node.mjs",
+    "download:node:all": "node scripts/pack/download-node.mjs --all",
+    "download:chromium": "node scripts/pack/download-playwright-browsers.mjs",
+    "generate:icons": "node scripts/pack/generate-icons.mjs",
     "typecheck": "tsc --noEmit",
     "test:all": "node scripts/run-test.mjs",
-    "workspace": "npm run workspace:server & npm run workspace:web",
-    "workspace:web": "npm run dev --prefix workspace/web",
-    "workspace:server": "npm run dev --prefix workspace/server",
-    "test:login": "node scripts/run-test.mjs",
-    "test:project": "node scripts/run-test.mjs"
+    "workspace": "node scripts/dev/workspace.mjs",
+    "workspace:web": "node scripts/dev/workspace-web.mjs",
+    "workspace:server": "node scripts/dev/workspace-server.mjs",
+    "electron:dev": "node scripts/dev/electron-dev.mjs",
+    "electron:build:mac:arm64": "node scripts/pack/run-electron-build.mjs mac arm64",
+    "electron:build:mac:x64": "node scripts/pack/run-electron-build.mjs mac x64",
+    "electron:build:win": "node scripts/pack/run-electron-build.mjs win",
+    "electron:build:all": "node scripts/pack/run-electron-build.mjs all",
+    "release": "node scripts/release.mjs",
+    "pub": "node scripts/pub.mjs",
+    "prepare": "husky"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
@@ -20,8 +37,64 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
     "@types/node": "^20.11.0",
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8",
+    "husky": "^9.1.7",
+    "semver": "^7.8.5",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3"
+  },
+  "build": {
+    "appId": "com.visual-e2e-test.app",
+    "productName": "Visual E2E Test",
+    "directories": {
+      "buildResources": "electron/icons"
+    },
+    "files": [
+      "electron/dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "electron/resources/app",
+        "to": "app",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "electron/resources/node",
+        "to": "node",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "electron/resources/playwright-browsers",
+        "to": "playwright-browsers",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "icon": "electron/icons/icon.icns",
+      "category": "public.app-category.developer-tools"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "electron/icons/icon.ico"
+    },
+    "dmg": {
+      "title": "Visual E2E Test"
+    }
   }
 }

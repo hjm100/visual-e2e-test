@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import fastifyStatic from "@fastify/static";
 import { loadConfig } from "./config.js";
 import { RunOrchestratorService } from "./services/run-orchestrator.service.js";
 import { SettingsRepository } from "./repositories/settings.repo.js";
@@ -22,13 +23,19 @@ async function main(): Promise<void> {
   const settingsRepo = new SettingsRepository(config);
   const projectRepo = new ProjectRepository(config);
 
-  await app.register(cors, { origin: true });
+  await app.register(cors, {
+    origin: config.serveWeb ? false : true,
+  });
 
   registerProjectMiddleware(app, config);
 
   app.get("/api/health", async () => ({
     ok: true,
+    runtime: config.runtime,
+    port: config.port,
     e2eRoot: config.e2eRoot,
+    projectsDir: config.projectsDir,
+    configDir: config.configDir,
     defaultProject: config.defaultProjectId,
     projects: projectRepo.list().map((p) => ({
       id: p.id,
@@ -46,10 +53,27 @@ async function main(): Promise<void> {
   registerRunRoutes(app, runService, config);
   registerConfigRoutes(app, settingsRepo);
 
-  await app.listen({ port: config.port, host: "0.0.0.0" });
-  console.log(`Workspace API: http://localhost:${config.port}`);
+  if (config.serveWeb) {
+    await app.register(fastifyStatic, {
+      root: config.webDistDir,
+      prefix: "/",
+      wildcard: false,
+    });
+
+    app.setNotFoundHandler((req, reply) => {
+      if (req.url.startsWith("/api")) {
+        return reply.code(404).send({ error: "Not found" });
+      }
+      return reply.sendFile("index.html", config.webDistDir);
+    });
+  }
+
+  await app.listen({ port: config.port, host: config.host });
+  console.log(`Workspace API: http://${config.host}:${config.port}`);
+  console.log(`E2E_RUNTIME: ${config.runtime}`);
   console.log(`E2E_ROOT: ${config.e2eRoot}`);
-  console.log(`Projects: ${listProjectIds(config.e2eRoot).join(", ")}`);
+  console.log(`PROJECTS_DIR: ${config.projectsDir}`);
+  console.log(`Projects: ${listProjectIds(config.e2eRoot).join(", ") || "(none)"}`);
 }
 
 main().catch((err) => {

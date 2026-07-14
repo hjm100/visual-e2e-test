@@ -1,0 +1,26 @@
+---
+description: Git 提交信息规范（Conventional Commits）。创建 commit 时遵循。
+alwaysApply: true
+---
+
+# 提交规范
+
+格式：`<type>(<scope>): <subject>`
+
+## type
+
+`feat` `fix` `refactor` `perf` `test` `build` `ci` `chore` `docs` `revert`
+
+## scope（可选）
+
+`client` `pack` `web` `server` `engine` `ci` `docs` `workspace` `release`
+
+## 示例
+
+```
+feat(web): 支持场景删除
+fix(pack): 优化 macOS 打包流程
+chore(release): bump version to 1.1.0
+```
+
+subject 祈使句，≤ 100 字符，句末不加句号。

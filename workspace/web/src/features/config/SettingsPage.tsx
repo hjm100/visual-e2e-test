@@ -8,6 +8,7 @@ import { api } from "../../api/client";
 import { SETTINGS_FIELDS } from "../../constants/config-field-meta";
 import type { SettingsDraft } from "../../types/settings";
 import { JsonPreview } from "../../components/JsonPreview";
+import { ScrollPane } from "../../components/layout/ScrollPane";
 
 const NAV_WAIT_OPTIONS = [
   { value: "load", label: "load" },
@@ -72,11 +73,15 @@ export function SettingsPage() {
   };
 
   if (!draft) {
-    return <div style={{ padding: 24 }}>加载中…</div>;
+    return (
+      <ScrollPane>
+        加载中…
+      </ScrollPane>
+    );
   }
 
   return (
-    <div style={{ padding: 24, maxWidth: 960, overflow: "auto", height: "100%" }}>
+    <ScrollPane>
       <Typography.Title level={4}>全局配置</Typography.Title>
 
       <Alert
@@ -136,17 +141,6 @@ export function SettingsPage() {
               </Form.Item>
             </Col>
             <Col span={6}>
-              <Form.Item label={SETTINGS_FIELDS.channel.label} tooltip={SETTINGS_FIELDS.channel.tooltip}>
-                <Input
-                  value={draft.browser.channel}
-                  placeholder="留空"
-                  onChange={(e) => patchBrowser({ channel: e.target.value })}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={16}>
-            <Col span={6}>
               <Form.Item label={SETTINGS_FIELDS.timeout.label} tooltip={SETTINGS_FIELDS.timeout.tooltip}>
                 <InputNumber
                   min={1}
@@ -157,6 +151,8 @@ export function SettingsPage() {
                 />
               </Form.Item>
             </Col>
+          </Row>
+          <Row gutter={16}>
             <Col span={6}>
               <Form.Item label={SETTINGS_FIELDS.actionTimeout.label} tooltip={SETTINGS_FIELDS.actionTimeout.tooltip}>
                 <InputNumber
@@ -303,8 +299,8 @@ export function SettingsPage() {
       </Form>
 
       <Card size="small" title="JSON 预览" style={{ marginTop: 8 }}>
-        <JsonPreview data={draft} />
+        <JsonPreview embedded data={draft} />
       </Card>
-    </div>
+    </ScrollPane>
   );
 }

@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { RunOrchestratorService, type RunScope } from "../services/run-orchestrator.service.js";
 import { EnvService } from "../services/env.service.js";
+import { pipeRunsZip } from "../services/run-archive.service.js";
 import type { WorkspaceConfig } from "../config.js";
 import { readFileSync } from "node:fs";
 import { extname } from "node:path";
@@ -54,6 +55,41 @@ export function registerRunRoutes(
 
   app.get("/api/runs", async (req) => runs.listJobs(req.project.id));
 
+  app.post<{ Body: { runIds?: string[] } }>("/api/runs/delete", async (req, reply) => {
+    const runIds = req.body.runIds ?? [];
+    if (runIds.length === 0) {
+      return reply.status(400).send({ error: "runIds 不能为空" });
+    }
+    return runs.deleteRuns(req.project.id, runIds);
+  });
+
+  app.post<{ Body: { runIds?: string[] } }>("/api/runs/download", async (req, reply) => {
+    const runIds = req.body.runIds ?? [];
+    if (runIds.length === 0) {
+      return reply.status(400).send({ error: "runIds 不能为空" });
+    }
+    const { entries, skipped } = runs.resolveRunArchiveEntries(req.project.id, runIds);
+    if (entries.length === 0) {
+      return reply.status(404).send({ error: "没有可下载的运行记录", skipped });
+    }
+    const ids = entries.map((e) => e.runId);
+    await pipeRunsZip(reply, entries, runs.zipFilename(req.project.id, ids));
+    return reply;
+  });
+
+  app.get<{ Params: { runId: string; projectId: string } }>(
+    "/api/runs/artifacts/:projectId/:runId/download.zip",
+    async (req, reply) => {
+      const { projectId, runId } = req.params;
+      const { entries, skipped } = runs.resolveRunArchiveEntries(projectId, [runId]);
+      if (entries.length === 0) {
+        return reply.status(404).send({ error: "运行记录不存在", skipped });
+      }
+      await pipeRunsZip(reply, entries, runs.zipFilename(projectId, [runId]));
+      return reply;
+    },
+  );
+
   app.get<{ Params: { jobId: string } }>("/api/runs/:jobId", async (req, reply) => {
     const job = runs.getJob(req.params.jobId, req.project.id);
     if (!job) return reply.status(404).send({ error: "任务不存在" });
@@ -93,7 +129,7 @@ export function registerRunRoutes(
   });
 
   app.delete<{ Params: { jobId: string } }>("/api/runs/:jobId", async (req, reply) => {
-    const ok = runs.cancelJob(req.params.jobId);
+    const ok = runs.cancelJob(req.params.jobId, req.project.id);
     if (!ok) return reply.status(404).send({ error: "任务不存在或已结束" });
     return { ok: true };
   });
@@ -103,6 +139,16 @@ export function registerRunRoutes(
     async (req, reply) => {
       const { projectId, runId } = req.params;
       const subPath = req.params["*"] || "report.html";
+
+      if (subPath === "download.zip") {
+        const { entries } = runs.resolveRunArchiveEntries(projectId, [runId]);
+        if (entries.length === 0) {
+          return reply.status(404).send({ error: "运行记录不存在" });
+        }
+        await pipeRunsZip(reply, entries, runs.zipFilename(projectId, [runId]));
+        return reply;
+      }
+
       const filePath = runs.resolveRunArtifactPath(projectId, runId, subPath);
       if (!filePath) {
         return reply.status(404).send({ error: "文件不存在" });

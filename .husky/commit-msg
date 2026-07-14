@@ -1,0 +1,7 @@
+# Cursor / Xcode git 不加载 shell 配置，需手动补 PATH
+if [ -s "$HOME/.nvm/nvm.sh" ]; then
+  . "$HOME/.nvm/nvm.sh"
+fi
+export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"
+
+commitlint --edit "$1"

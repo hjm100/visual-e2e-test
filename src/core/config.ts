@@ -2,15 +2,17 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { config as loadDotenv } from "dotenv";
-import settingsJson from "../../config/settings.json" with { type: "json" };
+import defaultSettingsJson from "../../config/settings.json" with { type: "json" };
 import {
   resolveDefaultProjectId,
   resolveProjectContext,
+  getProjectsDir,
   type ProjectContext,
 } from "./project-context.js";
+import { resolveE2eRoot, resolveSettingsPath } from "./paths.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-export const rootDir = resolve(__dirname, "../..");
+export const rootDir = resolveE2eRoot(resolve(__dirname, "../.."));
 
 function loadEnvFiles(projectEnvPath: string): void {
   const rootEnv = resolve(rootDir, ".env");
@@ -40,7 +42,6 @@ export interface AppConfig {
     headless: boolean;
     slowMo: number;
     devtools: boolean;
-    channel: string;
     timeout: number;
     actionTimeout: number;
     navigationWaitUntil: "load" | "domcontentloaded" | "networkidle" | "commit";
@@ -88,6 +89,14 @@ const LOGIN_DEFAULTS: AppConfig["login"] = {
   submitSelector: 'button:has-text("登录")',
 };
 
+function loadSettingsFile(): typeof defaultSettingsJson {
+  const settingsPath = resolveSettingsPath(rootDir);
+  if (existsSync(settingsPath)) {
+    return JSON.parse(readFileSync(settingsPath, "utf-8")) as typeof defaultSettingsJson;
+  }
+  return defaultSettingsJson;
+}
+
 function loadLoginConfig(variablesPath: string): AppConfig["login"] {
   const loginVars = loadVariables(variablesPath).login ?? {};
   return {
@@ -107,7 +116,7 @@ export function loadConfig(overrides?: {
   const project = resolveProjectContext(rootDir, projectId);
   loadEnvFiles(project.envPath);
 
-  const s = settingsJson as {
+  const s = loadSettingsFile() as {
     browser: AppConfig["browser"];
     test: AppConfig["test"];
     output: AppConfig["output"];
@@ -127,7 +136,6 @@ export function loadConfig(overrides?: {
       headless: overrides?.headless ?? envBool("HEADLESS", s.browser.headless),
       slowMo: overrides?.slowMo ?? envInt("SLOW_MO", s.browser.slowMo),
       devtools: s.browser.devtools,
-      channel: process.env.BROWSER_CHANNEL ?? s.browser.channel,
       timeout: s.browser.timeout,
       actionTimeout: s.browser.actionTimeout,
       navigationWaitUntil: s.browser.navigationWaitUntil,
@@ -148,7 +156,9 @@ export function loadConfig(overrides?: {
 }
 
 export function loadVariables(variablesPath?: string): Record<string, Record<string, string>> {
-  const path = variablesPath ?? resolve(rootDir, "projects", resolveDefaultProjectId(rootDir), "fixtures", "variables.json");
+  const path =
+    variablesPath ??
+    join(getProjectsDir(rootDir), resolveDefaultProjectId(rootDir), "fixtures", "variables.json");
   if (!existsSync(path)) return { global: {} };
   return JSON.parse(readFileSync(path, "utf-8")) as Record<string, Record<string, string>>;
 }

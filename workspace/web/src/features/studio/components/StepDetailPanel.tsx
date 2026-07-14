@@ -58,7 +58,7 @@ export function StepDetailPanel({
 
   if (readOnly) {
     return (
-      <div style={{ padding: 16, overflow: "auto", height: "100%" }}>
+      <div style={{ padding: 16 }}>
         {ruleRef && (
           <div style={{ marginBottom: 12, padding: 8, background: "#f6f8fa", borderRadius: 6 }}>
             <Typography.Text type="secondary">继承规则：</Typography.Text>
@@ -128,7 +128,7 @@ export function StepDetailPanel({
   const valueMeta = valueFieldMeta(step.type);
 
   return (
-    <div style={{ padding: 16, overflow: "auto", height: "100%" }}>
+      <div style={{ padding: 16 }}>
       {fixtureParamNames && fixtureParamNames.length > 0 && (
         <div style={{ marginBottom: 12 }}>
           <Typography.Text type="secondary" style={{ fontSize: 12, marginRight: 8 }}>

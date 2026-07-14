@@ -115,6 +115,11 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ module, file, content }),
     }),
+  deleteProfile: (module: string, file: string) =>
+    request<{ ok: boolean; deletedScenario: string | null }>(
+      `/api/profiles/${module}/${file}`,
+      { method: "DELETE" },
+    ),
   getProfileStatus: (module: string, file: string) =>
     request<{ converted: boolean; jsonPath: string | null; jsonExists: boolean; diverged: boolean }>(
       `/api/profiles/status?module=${encodeURIComponent(module)}&file=${encodeURIComponent(file)}`,
@@ -171,6 +176,11 @@ export const api = {
   getRun: (jobId: string) => request<RunJob>(`/api/runs/${jobId}`),
   cancelRun: (jobId: string) =>
     request<{ ok: boolean }>(`/api/runs/${jobId}`, { method: "DELETE" }),
+  deleteRuns: (runIds: string[]) =>
+    request<{ deleted: string[]; skipped: Array<{ runId: string; reason: string }> }>(
+      "/api/runs/delete",
+      { method: "POST", body: JSON.stringify({ runIds }) },
+    ),
 };
 
 function draftPayload(draft: ScenarioDraft): Record<string, unknown> {
@@ -198,6 +208,10 @@ export function reportUrl(job: RunJob): string | undefined {
   const projectId = job.projectId ?? activeProjectId;
   if (!runId || !projectId) return undefined;
   return `/api/runs/artifacts/${projectId}/${runId}/report.html`;
+}
+
+export function canOpenReport(job: RunJob): boolean {
+  return job.status === "passed" && !!reportUrl(job);
 }
 
 export interface ProjectMeta {

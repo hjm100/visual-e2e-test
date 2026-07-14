@@ -4,7 +4,7 @@ import { Button, Space, Select, message, Card, Alert } from "antd";
 import { PlayCircleOutlined } from "@ant-design/icons";
 import { api } from "../../api/client";
 import { useProject } from "../../context/ProjectContext";
-import type { RunScope, ScenarioSummary } from "../../types/module";
+import type { RunScope, ScenarioSummary, RunJob } from "../../types/module";
 
 function scenarioRef(s: ScenarioSummary): string {
   return `${s.module}/${s.id}`;
@@ -70,9 +70,13 @@ export function RunLaunchPanel() {
         options: { headed, headless: !headed },
       });
     },
-    onSuccess: () => {
+    onSuccess: (job) => {
       message.success("运行已启动");
-      qc.invalidateQueries({ queryKey: ["runs", projectId] });
+      qc.setQueryData<RunJob[]>(["runs", projectId], (prev) => {
+        const list = prev ?? [];
+        return [job, ...list.filter((j) => j.jobId !== job.jobId)];
+      });
+      void qc.invalidateQueries({ queryKey: ["runs", projectId] });
     },
     onError: (e: Error) => message.error(e.message),
   });

@@ -2,7 +2,13 @@
 projects/
 node_modules/
 dist/
+build/
 .venv/
 .playwright/
+playwright-browsers/
 *.log
 .DS_Store
+
+# Electron build artifacts
+electron/dist/
+electron/resources/

@@ -9,7 +9,7 @@
     "resolveJsonModule": true,
     "outDir": "dist",
     "rootDir": "src",
-    "noEmit": true
+    "noEmit": false
   },
   "include": ["src/**/*"]
 }

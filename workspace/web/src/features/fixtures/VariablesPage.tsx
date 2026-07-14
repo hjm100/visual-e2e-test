@@ -5,6 +5,7 @@ import { SaveOutlined } from "@ant-design/icons";
 import { api } from "../../api/client";
 import { VARIABLES_USAGE } from "../../constants/config-field-meta";
 import { useProject } from "../../context/ProjectContext";
+import { ScrollPane } from "../../components/layout/ScrollPane";
 
 export function VariablesPage() {
   const { projectId } = useProject();
@@ -25,7 +26,7 @@ export function VariablesPage() {
   const display = text || (data ? JSON.stringify(data, null, 2) : "");
 
   return (
-    <div style={{ padding: 24 }}>
+    <ScrollPane>
       <Typography.Title level={4}>全局变量</Typography.Title>
 
       <Alert
@@ -57,6 +58,6 @@ export function VariablesPage() {
         onChange={(e) => setText(e.target.value)}
         style={{ fontFamily: "monospace", fontSize: 12 }}
       />
-    </div>
+    </ScrollPane>
   );
 }
