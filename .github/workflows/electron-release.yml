@@ -1,16 +1,15 @@
 name: Electron Release
 
-# 安装包在本机打包后由 npm run pub 上传；本 workflow 仅在 Release 发布后触发站点。
+# 本机 npm run pub 创建 GitHub Release（含安装包）后触发，通知官网更新下载链接。
 on:
   release:
     types: [published]
-  workflow_dispatch:
 
 permissions:
   contents: read
 
 env:
-  SITE_REPO: hjm100/visual-e2e-sky
+  SITE_REPO: visual-e2e/visual-e2e-sky
 
 jobs:
   notify-site:
@@ -18,16 +17,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Trigger site redeploy
-        if: ${{ secrets.SITE_DEPLOY_TOKEN != '' }}
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.SITE_DEPLOY_TOKEN }}
-          repository: ${{ env.SITE_REPO }}
-          event-type: release-published
-          client-payload: '{"version": "${{ github.event.release.tag_name || github.ref_name }}"}'
-
-      - name: Site dispatch skipped
-        if: ${{ secrets.SITE_DEPLOY_TOKEN == '' }}
+        env:
+          SITE_DEPLOY_TOKEN: ${{ secrets.SITE_DEPLOY_TOKEN }}
         run: |
-          echo "::warning::SITE_DEPLOY_TOKEN not set — visual-e2e-sky deploy was not triggered."
-          echo "Create a PAT with repo scope and add it as SITE_DEPLOY_TOKEN in this repository."
+          if [ -z "$SITE_DEPLOY_TOKEN" ]; then
+            echo "::warning::SITE_DEPLOY_TOKEN not set — visual-e2e-sky deploy was not triggered."
+            echo "Create a PAT with repo scope on visual-e2e/visual-e2e-sky and add it as SITE_DEPLOY_TOKEN."
+            exit 0
+          fi
+          VERSION="${{ github.event.release.tag_name }}"
+          curl -fsS -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${SITE_DEPLOY_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${SITE_REPO}/dispatches" \
+            -d "{\"event_type\":\"release-published\",\"client_payload\":{\"version\":\"${VERSION}\"}}"
+          echo "Dispatched release-published to ${SITE_REPO} (version=${VERSION})"
