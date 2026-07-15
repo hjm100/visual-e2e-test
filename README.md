@@ -35,10 +35,21 @@ npm run electron:build:all                  # 本机：arm64 + x64 + Windows
 npm run electron:build:mac:arm64
 npm run electron:build:mac:x64
 npm run electron:build:win
-npm run pub                                 # 本机产物上传 GitHub Release（须 gh + 已 build）
+npm run pub                                 # CDN + tag + GitHub Release（须 gh + 已 build）
 ```
 
 运行模式与发版细节见 [docs/CLIENT.md](docs/CLIENT.md)。
+
+## 发版配置
+
+```bash
+npm run release       # 拉 release 分支并 bump 版本
+# 合并 master 后打包…
+export QINIU_ACCESS_KEY=...   # 七牛 AccessKey
+export QINIU_SECRET_KEY=...   # 七牛 SecretKey
+npm run upload:cdn    # 只上传七牛（version.js；已存在则跳过）
+npm run pub           # upload:cdn → tag → GitHub Release 备份
+```
 
 ## 项目结构
 

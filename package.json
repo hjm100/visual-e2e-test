@@ -28,6 +28,7 @@
     "electron:build:win": "node scripts/pack/run-electron-build.mjs win",
     "electron:build:all": "node scripts/pack/run-electron-build.mjs all",
     "release": "node scripts/release.mjs",
+    "upload:cdn": "node scripts/upload-cdn.mjs",
     "pub": "node scripts/pub.mjs",
     "prepare": "husky"
   },
@@ -44,6 +45,7 @@
     "electron": "^33.4.11",
     "electron-builder": "^25.1.8",
     "husky": "^9.1.7",
+    "qiniu": "^7.15.2",
     "semver": "^7.8.5",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3"

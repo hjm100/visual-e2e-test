@@ -1,0 +1,11 @@
+{
+  "provider": "qiniu",
+  "bucket": "visual-e2e",
+  "region": "z2",
+  "domain": "https://ti7qybrjp.hn-bkt.clouddn.com",
+  "keyPrefix": "releases",
+  "upload": {
+    "overwriteLatest": true,
+    "retry": 3
+  }
+}

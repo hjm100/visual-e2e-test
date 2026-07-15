@@ -110,7 +110,7 @@ npm run electron:build:win
 | `electron:build:mac:x64` | `build/macos-x64/`（`.app` + `.dmg`） |
 | `electron:build:win` | `build/windows/`（`.exe`） |
 
-发版：`npm run release` → 合并 master → 本机 `download:chromium -- all` + `electron:build:all` → `npm run pub`（打 tag并用 `gh` 上传 Release）。`electron-release.yml` 仅在 Release published 后触发下载站。
+发版：`npm run release` → 合并 master → 本机 `download:chromium -- all` + `electron:build:all` → 配置环境变量 `QINIU_ACCESS_KEY` / `QINIU_SECRET_KEY` → `npm run pub`（内部执行 `upload:cdn`，再打 tag 并用 `gh` 上传 GitHub Release 备份）。仅补传 CDN：`npm run upload:cdn`（版本取自 `version.js`；该版本 manifest 已存在则跳过，`--force` 强制重传）。
 
 ### 包内容
 
