@@ -23,7 +23,7 @@ export async function evaluateVerify(
   options: EvaluateVerifyOptions = {},
 ): Promise<boolean> {
   const expectValue = ctx.resolve(step.expectValue);
-  const rule = step.matchRule;
+  const rule = step.matchRule ?? MatchRule.Contains;
   const timeout = ctx.getDefaultTimeout(step.timeOut);
   const instant = options.instant === true;
 

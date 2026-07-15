@@ -8,7 +8,7 @@ export const baseStepSchema = z.object({
   type: z.nativeEnum(StepType),
   selector: z.string().optional().default(""),
   url: z.string().optional().default(""),
-  delay: z.number().optional().default(0),
+  delay: z.number().optional(),
   timeOut: z.number().optional(),
   value: z.union([z.string(), z.number(), z.null()]).optional().nullable(),
   params: z.record(z.unknown()).optional().default({}),

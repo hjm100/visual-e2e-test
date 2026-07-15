@@ -4,6 +4,7 @@ import { registerIpcHandlers } from "./ipc/handlers.js";
 import { buildApplicationMenu } from "./menu/application-menu.js";
 import { startSidecar, stopSidecar } from "./sidecar.js";
 import type { StorageLayout } from "./storage.js";
+import { configureEditSupport } from "./web-contents/edit-support.js";
 import { createMainWindow } from "./windows/create-window.js";
 
 const isDev = !app.isPackaged;
@@ -11,13 +12,14 @@ const isDev = !app.isPackaged;
 let mainWindow: BrowserWindow | null = null;
 let targetUrl = "";
 let storageLayout: StorageLayout | null = null;
-const reportWindows = new Set<BrowserWindow>();
+const ipcContext = { reportWindow: null as BrowserWindow | null };
 
 async function bootstrap(): Promise<void> {
-  registerIpcHandlers({ reportWindows });
+  registerIpcHandlers(ipcContext);
 
   const { layout, baseUrl } = await startSidecar(isDev, process.resourcesPath, app.getPath("userData"));
   storageLayout = layout;
+  configureEditSupport(layout);
   cleanupIfNeeded(isDev, layout);
 
   targetUrl = isDev ? "http://localhost:5173" : baseUrl;
@@ -34,9 +36,8 @@ app.whenReady().then(bootstrap).catch((err) => {
 
 app.on("before-quit", () => {
   stopSidecar();
-  for (const win of reportWindows) {
-    if (!win.isDestroyed()) win.destroy();
-  }
+  const win = ipcContext.reportWindow;
+  if (win && !win.isDestroyed()) win.destroy();
 });
 
 app.on("window-all-closed", () => {

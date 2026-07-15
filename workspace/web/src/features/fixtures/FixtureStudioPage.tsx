@@ -10,7 +10,8 @@ import {
   macroDraftToRaw, ruleDraftToRaw,
   type MacroDraft, type RuleDraft,
 } from "../../types/fixture";
-import { nextStepId } from "../../types/scenario";
+import { createEmptyStep, insertStep } from "../../utils/scenario-serialize";
+import { renameStepId } from "../../utils/step-id";
 import { FixtureListPanel } from "./components/FixtureListPanel";
 import { FixtureMetaPanel } from "./components/FixtureMetaPanel";
 import { FixtureStudioHeader } from "./components/FixtureStudioHeader";
@@ -112,10 +113,17 @@ export function FixtureStudioPage({ kind }: FixtureStudioPageProps) {
 
   const patchStep = useCallback((patch: Partial<MacroDraft["steps"][0]>) => {
     if (selectedStepIndex == null) return;
-    setDraft((d) => ({
-      ...d,
-      steps: d.steps.map((s, i) => (i === selectedStepIndex ? { ...s, ...patch } : s)),
-    }));
+    setDraft((d) => {
+      const prev = d.steps[selectedStepIndex];
+      if (!prev) return d;
+      if (patch.stepId != null && patch.stepId !== prev.stepId) {
+        return { ...d, steps: renameStepId(d.steps, prev.stepId, patch.stepId) };
+      }
+      return {
+        ...d,
+        steps: d.steps.map((s, i) => (i === selectedStepIndex ? { ...s, ...patch } : s)),
+      };
+    });
     setDirty(true);
   }, [selectedStepIndex]);
 
@@ -255,12 +263,14 @@ export function FixtureStudioPage({ kind }: FixtureStudioPageProps) {
                     size="small"
                     icon={<PlusOutlined />}
                     onClick={() => {
-                      const steps = [
-                        ...draft.steps,
-                        { stepId: nextStepId(draft.steps), type: "click" as const, desc: "", selector: "" },
-                      ];
+                      const newStep = createEmptyStep(draft.steps);
+                      const steps = insertStep(draft.steps, selectedStepIndex, newStep);
+                      const newIndex =
+                        selectedStepIndex == null || selectedStepIndex < 0 || selectedStepIndex >= draft.steps.length
+                          ? steps.length - 1
+                          : selectedStepIndex + 1;
                       patchDraft({ steps });
-                      if (selectedStepIndex == null) setSelectedStepIndex(steps.length - 1);
+                      setSelectedStepIndex(newIndex);
                     }}
                   >
                     添加步骤

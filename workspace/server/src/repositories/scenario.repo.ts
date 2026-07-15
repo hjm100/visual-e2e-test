@@ -6,6 +6,7 @@ import type { ProjectContext } from "../project-context.js";
 import { resolveWithin } from "../utils/path-security.js";
 import type { ModuleInfo, ScenarioSummary, ScenarioTreeNode } from "../types/module.js";
 import type { ScenarioWrite } from "../schemas/scenario.schema.js";
+import { compactScenarioWrite } from "../utils/scenario-serialize.js";
 import { ManifestRepository } from "./manifest.repo.js";
 
 interface ScenarioRaw {
@@ -82,13 +83,32 @@ export class ScenarioRepository {
     return JSON.parse(readFileSync(abs, "utf-8"));
   }
 
+  createModule(module: string, description?: string): ModuleInfo {
+    const id = module.trim().toLowerCase();
+    if (!/^[a-z][a-z0-9_-]*$/.test(id)) {
+      throw new Error("模块名须以小写字母开头，仅含字母、数字、_、-");
+    }
+    this.manifestRepo.createModule(id, description?.trim() || undefined);
+    const manifest = this.manifestRepo.read(id);
+    return {
+      module: id,
+      description: manifest.description,
+      entryRoute: manifest.entryRoute,
+      scenarioCount: manifest.scenarios.length,
+    };
+  }
+
+  private writeScenarioFile(abs: string, data: ScenarioWrite): void {
+    writeFileSync(abs, `${JSON.stringify(compactScenarioWrite(data), null, 2)}\n`, "utf-8");
+  }
+
   createScenario(module: string, filePath: string, data: ScenarioWrite): { file: string } {
     const rel = normalizeScenarioPath(filePath, data.id);
     const abs = this.resolveScenarioPath(module, rel);
     if (existsSync(abs)) throw new Error(`场景已存在: ${module}/${rel}`);
 
     mkdirSync(dirname(abs), { recursive: true });
-    writeFileSync(abs, `${JSON.stringify(data, null, 2)}\n`, "utf-8");
+    this.writeScenarioFile(abs, data);
     this.manifestRepo.ensureModule(module);
     this.manifestRepo.addScenario(module, rel);
     return { file: rel };
@@ -101,7 +121,7 @@ export class ScenarioRepository {
     const newRel = normalizeScenarioPath(filePath, data.id);
     const newAbs = this.resolveScenarioPath(module, newRel);
 
-    writeFileSync(newAbs, `${JSON.stringify(data, null, 2)}\n`, "utf-8");
+    this.writeScenarioFile(newAbs, data);
 
     if (newRel !== filePath) {
       if (existsSync(abs) && abs !== newAbs) unlinkSync(abs);

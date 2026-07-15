@@ -6,6 +6,7 @@ import { ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons";
 import type { StepDraft } from "../../../types/scenario";
 import { stepTypeLabel, stepTypeShortLabel } from "../../../constants/field-meta";
 import { useElementHeight } from "../../../hooks/useElementHeight";
+import { renumberAutoStepIds } from "../../../utils/step-id";
 
 interface StepTablePanelProps {
   steps: StepDraft[];
@@ -33,12 +34,14 @@ export function StepTablePanel({
   const scrollY = useElementHeight(containerRef, TABLE_HEAD_RESERVE);
   const tableScrollY = embedded ? undefined : scrollY > 0 ? scrollY : undefined;
 
+  const commit = (next: StepDraft[]) => onChange(renumberAutoStepIds(next));
+
   const move = (index: number, dir: -1 | 1) => {
     const j = index + dir;
     if (j < 0 || j >= steps.length) return;
     const next = [...steps];
     [next[index], next[j]] = [next[j], next[index]];
-    onChange(next);
+    commit(next);
   };
 
   const columns: ColumnsType<StepDraft> = [
@@ -81,7 +84,7 @@ export function StepTablePanel({
                 danger
                 onClick={(e) => {
                   e.stopPropagation();
-                  onChange(steps.filter((_, idx) => idx !== i));
+                  commit(steps.filter((_, idx) => idx !== i));
                 }}
               >
                 删

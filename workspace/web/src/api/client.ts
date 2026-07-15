@@ -3,6 +3,7 @@ import type {
   ProfileSummary, MacroSummary, RuleSummary, RunJob, RunScope,
 } from "../types/module";
 import type { ScenarioDraft } from "../types/scenario";
+import { compactScenarioPayload } from "../utils/scenario-serialize";
 import type { SettingsDraft } from "../types/settings";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "";
@@ -41,6 +42,11 @@ export const api = {
   deleteProject: (id: string) =>
     request<{ ok: boolean }>(`/api/projects/${id}`, { method: "DELETE" }),
   modules: () => request<ModuleInfo[]>("/api/modules"),
+  createModule: (module: string, description?: string) =>
+    request<ModuleInfo>("/api/modules", {
+      method: "POST",
+      body: JSON.stringify({ module, description }),
+    }),
   scenarios: (module: string, q?: string) =>
     request<ScenarioSummary[]>(`/api/modules/${module}/scenarios${q ? `?q=${encodeURIComponent(q)}` : ""}`),
   getScenario: (module: string, file: string) =>
@@ -184,22 +190,7 @@ export const api = {
 };
 
 function draftPayload(draft: ScenarioDraft): Record<string, unknown> {
-  const base: Record<string, unknown> = {
-    id: draft.id,
-    name: draft.name,
-    module: draft.module,
-    enabled: draft.enabled,
-    setup: draft.setup,
-  };
-  if (draft.loop) base.loop = draft.loop;
-  if (draft.mode === "extends") {
-    base.extends = draft.extends;
-    base.params = draft.params ?? {};
-    if (draft.steps.length) base.steps = draft.steps;
-    return base;
-  }
-  base.steps = draft.steps;
-  return base;
+  return compactScenarioPayload(draft);
 }
 
 export function reportUrl(job: RunJob): string | undefined {
@@ -211,7 +202,7 @@ export function reportUrl(job: RunJob): string | undefined {
 }
 
 export function canOpenReport(job: RunJob): boolean {
-  return job.status === "passed" && !!reportUrl(job);
+  return job.status !== "running" && !!job.reportFile;
 }
 
 export interface ProjectMeta {

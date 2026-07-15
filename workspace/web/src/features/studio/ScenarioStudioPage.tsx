@@ -1,11 +1,14 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Layout, Modal, message, Alert, Spin, Button } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { api } from "../../api/client";
 import { useProject } from "../../context/ProjectContext";
-import { emptyScenario, rawToDraft, nextStepId, type ScenarioDraft, type StepDraft } from "../../types/scenario";
+import { emptyScenario, rawToDraft, type ScenarioDraft, type StepDraft } from "../../types/scenario";
+import { createEmptyStep, insertStep, compactScenarioPayload } from "../../utils/scenario-serialize";
+import { renameStepId } from "../../utils/step-id";
+import { validateScenarioDraft, hasScenarioErrors } from "../../utils/scenario-validate";
 import { ScenarioListPanel } from "./components/ScenarioListPanel";
 import { ScenarioMetaPanel } from "./components/ScenarioMetaPanel";
 import { StepTablePanel } from "./components/StepTablePanel";
@@ -15,12 +18,13 @@ import { StudioHeader } from "./components/StudioHeader";
 import { StudioSection } from "./components/StudioSection";
 import { ImportProfileModal } from "./components/ImportProfileModal";
 import { JsonPreviewDrawer, type JsonPreviewMode } from "../../components/JsonPreviewDrawer";
+import { RunDetailDrawer } from "../runs/RunDetailDrawer";
+import { seedRunCache } from "../runs/seed-run-cache";
 import "./studio.css";
 
 const { Sider, Content } = Layout;
 
 export function ScenarioStudioPage() {
-  const navigate = useNavigate();
   const [search] = useSearchParams();
   const qc = useQueryClient();
   const { projectId } = useProject();
@@ -37,6 +41,7 @@ export function ScenarioStudioPage() {
   const [previewMode, setPreviewMode] = useState<JsonPreviewMode>("draft");
   const [issues, setIssues] = useState<{ level: string; message: string }[]>([]);
   const [importOpen, setImportOpen] = useState(false);
+  const [runJobId, setRunJobId] = useState<string | null>(null);
 
   const macrosQuery = useQuery({ queryKey: ["macros", projectId], queryFn: api.macros, enabled: !!projectId });
   const rulesQuery = useQuery({ queryKey: ["rules", projectId], queryFn: api.rules, enabled: !!projectId });
@@ -77,10 +82,17 @@ export function ScenarioStudioPage() {
 
   const patchStep = useCallback((patch: Partial<ScenarioDraft["steps"][0]>) => {
     if (selectedStepIndex == null) return;
-    setDraft((d) => ({
-      ...d,
-      steps: d.steps.map((s, i) => (i === selectedStepIndex ? { ...s, ...patch } : s)),
-    }));
+    setDraft((d) => {
+      const prev = d.steps[selectedStepIndex];
+      if (!prev) return d;
+      if (patch.stepId != null && patch.stepId !== prev.stepId) {
+        return { ...d, steps: renameStepId(d.steps, prev.stepId, patch.stepId) };
+      }
+      return {
+        ...d,
+        steps: d.steps.map((s, i) => (i === selectedStepIndex ? { ...s, ...patch } : s)),
+      };
+    });
     setDirty(true);
   }, [selectedStepIndex]);
 
@@ -145,7 +157,8 @@ export function ScenarioStudioPage() {
       }),
     onSuccess: (job) => {
       message.success("运行已启动");
-      navigate("/runs", { state: { jobId: job.jobId } });
+      seedRunCache(qc, projectId, job);
+      setRunJobId(job.jobId);
     },
     onError: (e: Error) => message.error(e.message),
   });
@@ -170,9 +183,39 @@ export function ScenarioStudioPage() {
     setPreviewMode("draft");
   };
 
+  const applyClientValidation = (): boolean => {
+    const local = validateScenarioDraft(draft);
+    if (hasScenarioErrors(local)) {
+      setIssues(local);
+      message.warning(local.map((i) => i.message).join("; "));
+      return false;
+    }
+    return true;
+  };
+
+  const handleAddStep = () => {
+    const newStep = createEmptyStep(draft.steps);
+    const next = insertStep(draft.steps, selectedStepIndex, newStep);
+    const newIndex =
+      selectedStepIndex == null || selectedStepIndex < 0 || selectedStepIndex >= draft.steps.length
+        ? next.length - 1
+        : selectedStepIndex + 1;
+    patchDraft({ steps: next });
+    setSelectedStepIndex(newIndex);
+  };
+
   const handleSave = () => {
-    if (dirty) saveScenarioMut.mutate();
-    else message.info("无修改");
+    if (!dirty) {
+      message.info("无修改");
+      return;
+    }
+    if (!applyClientValidation()) return;
+    saveScenarioMut.mutate();
+  };
+
+  const handleValidate = () => {
+    if (!applyClientValidation()) return;
+    validateMut.mutate();
   };
 
   const handleDelete = () => {
@@ -187,6 +230,7 @@ export function ScenarioStudioPage() {
   };
 
   const handleRun = (scope: "current" | "module") => {
+    if (scope === "current" && !applyClientValidation()) return;
     const go = () => {
       if (scope === "module") runMut.mutate({ scope: "module", scenarios: [] });
       else runMut.mutate({ scope: "scenarios", scenarios: [draft.id] });
@@ -201,6 +245,8 @@ export function ScenarioStudioPage() {
       go();
     }
   };
+
+  const previewDraft = useMemo(() => compactScenarioPayload(draft), [draft]);
 
   const selectedStep =
     selectedStepIndex != null ? (draft.steps[selectedStepIndex] ?? null) : null;
@@ -260,7 +306,7 @@ export function ScenarioStudioPage() {
           onNewScenario={handleNewScenario}
           onImportProfile={() => setImportOpen(true)}
           onSave={handleSave}
-          onValidate={() => validateMut.mutate()}
+          onValidate={handleValidate}
           onPreviewJson={() => {
             setPreviewMode("draft");
             setJsonPreviewOpen(true);
@@ -307,11 +353,7 @@ export function ScenarioStudioPage() {
                       type="primary"
                       size="small"
                       icon={<PlusOutlined />}
-                      onClick={() =>
-                        patchDraft({
-                          steps: [...draft.steps, { stepId: nextStepId(draft.steps), type: "click", desc: "", selector: "" }],
-                        })
-                      }
+                      onClick={handleAddStep}
                     >
                       添加步骤
                     </Button>
@@ -378,7 +420,7 @@ export function ScenarioStudioPage() {
         savePath={savePath}
         mode={previewMode}
         onModeChange={setPreviewMode}
-        draftData={draft}
+        draftData={previewDraft}
         expandedData={expanded}
         expandedAvailable={expanded != null}
         loading={expandMut.isPending}
@@ -391,6 +433,12 @@ export function ScenarioStudioPage() {
         module={activeModule}
         onClose={() => setImportOpen(false)}
         onImported={handleImport}
+      />
+
+      <RunDetailDrawer
+        jobId={runJobId}
+        open={!!runJobId}
+        onClose={() => setRunJobId(null)}
       />
     </Layout>
   );

@@ -44,12 +44,10 @@ export const STEP_FIELDS = {
   desc: {
     label: "描述",
     tooltip: "步骤说明，会显示在列表和运行报告中",
-    placeholder: "点击「确定」按钮",
   },
   selector: {
     label: "元素选择器",
     tooltip: "Playwright 选择器；有 selector 的步骤会自动等待该元素就绪",
-    placeholder: 'button:has-text("确定")',
   },
   url: {
     label: "跳转地址",
@@ -59,12 +57,12 @@ export const STEP_FIELDS = {
   verifyValue: {
     label: "验证目标",
     tooltip: "选择器或文本；input/textarea 会自动读取 inputValue",
-    placeholder: ".thy-table tbody tr",
+    placeholder: "body 或 .thy-table tbody tr",
   },
   expectValue: {
     label: "期望值",
     tooltip: "与匹配规则一起比较的目标值",
-    placeholder: "{project_name}",
+    placeholder: "期望文本或 {变量}",
   },
   matchRule: {
     label: "匹配规则",
@@ -104,6 +102,18 @@ export const STEP_FIELDS = {
   instantVerify: {
     label: "即时验证",
     tooltip: "带分支的 verify 不等待 DOM 就绪，立即检查并分支",
+  },
+  branch: {
+    label: "启用分支",
+    tooltip: "按验证结果跳转：通过走 yes，未通过走 no（可跳本场景步骤或同模块另一场景）",
+  },
+  branchYes: {
+    label: "通过 (yes)",
+    tooltip: "验证通过时的跳转目标",
+  },
+  branchNo: {
+    label: "未通过 (no)",
+    tooltip: "验证未通过时的跳转目标",
   },
 } satisfies Record<string, FieldMeta>;
 
@@ -231,4 +241,63 @@ export function valueFieldMeta(type: StepType): FieldMeta {
     label: "值",
     tooltip: "步骤附加数据",
   };
+}
+
+const DESC_PLACEHOLDER_BY_TYPE: Record<StepType, string> = {
+  click: "点击「确定」按钮",
+  hover: "悬停在菜单项上",
+  input: "输入项目名称",
+  link: "打开登录页",
+  wait: "等待动画结束",
+  ready: "等待列表加载完成",
+  scroll: "滚动到页面底部",
+  verify: "验证页面包含项目名称",
+  screenshot: "截取列表页",
+  log: "记录当前进度",
+  keyboard: "按下 Enter 确认",
+  macro: "执行「添加组件」宏",
+};
+
+const SELECTOR_PLACEHOLDER_BY_TYPE: Partial<Record<StepType, string>> = {
+  click: 'button:has-text("确定")',
+  hover: ".nav-item:has-text(\"设置\")",
+  input: 'input[placeholder="请输入"]',
+  keyboard: "input, textarea",
+  scroll: ".scroll-container",
+};
+
+const VERIFY_VALUE_PLACEHOLDER_BY_RULE: Partial<Record<MatchRule, string>> = {
+  visible: ".thy-table tbody tr",
+  hidden: ".loading-spinner",
+  urlContains: "可留空，用期望值匹配 URL",
+  contains: "body",
+  equals: "body",
+  regex: "body",
+};
+
+const EXPECT_VALUE_PLACEHOLDER_BY_RULE: Partial<Record<MatchRule, string>> = {
+  contains: "期望包含的文本或 {变量}",
+  equals: "期望完全相等的文本或 {变量}",
+  regex: "正则，如 ^项目.*$",
+  urlContains: "/project 或路由片段",
+  visible: "visible 规则可不填",
+  hidden: "hidden 规则可不填",
+};
+
+export function descPlaceholder(type: StepType): string {
+  return DESC_PLACEHOLDER_BY_TYPE[type] ?? "步骤说明";
+}
+
+export function selectorPlaceholder(type: StepType): string {
+  return SELECTOR_PLACEHOLDER_BY_TYPE[type] ?? 'button:has-text("确定")';
+}
+
+export function verifyValuePlaceholder(matchRule?: MatchRule): string {
+  const rule = matchRule ?? "contains";
+  return VERIFY_VALUE_PLACEHOLDER_BY_RULE[rule] ?? STEP_FIELDS.verifyValue.placeholder ?? "body";
+}
+
+export function expectValuePlaceholder(matchRule?: MatchRule): string {
+  const rule = matchRule ?? "contains";
+  return EXPECT_VALUE_PLACEHOLDER_BY_RULE[rule] ?? STEP_FIELDS.expectValue.placeholder ?? "期望文本";
 }

@@ -100,11 +100,50 @@ export class ValidateService {
 
     const steps = isExtendsScenario(scenario) ? (scenario.steps ?? []) : scenario.steps;
     for (const step of steps) {
+      this.checkStepRequiredFields(step, issues);
       if (step.type === "macro" && typeof step.value === "string") {
         try {
           this.fixtures.readMacro(step.value);
         } catch {
           issues.push({ level: "error", message: `宏不存在: ${step.value}`, path: step.stepId });
+        }
+      }
+    }
+  }
+
+  private checkStepRequiredFields(step: { stepId: string; type: string; selector?: string; url?: string; value?: unknown; verifyValue?: string; expectValue?: string; matchRule?: string; branch?: { yes?: { step?: string; scenario?: string }; no?: { step?: string; scenario?: string } } }, issues: ValidateIssue[]): void {
+    const blank = (v?: string) => !v || !v.trim();
+    const selectorTypes = new Set(["click", "hover", "input", "keyboard"]);
+    const valueTypes = new Set(["wait", "log", "screenshot"]);
+
+    if (selectorTypes.has(step.type) && blank(step.selector)) {
+      issues.push({ level: "error", message: `${step.stepId}：元素选择器不能为空`, path: step.stepId });
+    }
+    if (step.type === "link" && blank(step.url)) {
+      issues.push({ level: "error", message: `${step.stepId}：跳转地址不能为空`, path: step.stepId });
+    }
+    if (step.type === "macro" && (step.value == null || step.value === "")) {
+      issues.push({ level: "error", message: `${step.stepId}：请选择宏步骤`, path: step.stepId });
+    }
+    if (valueTypes.has(step.type) && (step.value == null || step.value === "")) {
+      issues.push({ level: "error", message: `${step.stepId}：值不能为空`, path: step.stepId });
+    }
+    if (step.type === "verify") {
+      if (blank(step.verifyValue)) {
+        issues.push({ level: "error", message: `${step.stepId}：验证目标不能为空`, path: step.stepId });
+      }
+      const rule = step.matchRule ?? "contains";
+      if (!["visible", "hidden", "urlContains"].includes(rule) && blank(step.expectValue)) {
+        issues.push({ level: "error", message: `${step.stepId}：期望值不能为空`, path: step.stepId });
+      }
+      if (step.branch) {
+        const yesVal = step.branch.yes?.scenario ?? step.branch.yes?.step;
+        const noVal = step.branch.no?.scenario ?? step.branch.no?.step;
+        if (blank(yesVal)) {
+          issues.push({ level: "error", message: `${step.stepId}：分支通过 (yes) 目标不能为空`, path: step.stepId });
+        }
+        if (blank(noVal)) {
+          issues.push({ level: "error", message: `${step.stepId}：分支未通过 (no) 目标不能为空`, path: step.stepId });
         }
       }
     }
