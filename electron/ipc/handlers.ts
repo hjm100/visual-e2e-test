@@ -2,9 +2,13 @@ import { writeFileSync } from "node:fs";
 import path from "node:path";
 import { app, BrowserWindow, dialog, ipcMain, type BrowserWindow as BrowserWindowType } from "electron";
 import { createReportWindow } from "../windows/create-window.js";
+import { ensureToolRunning } from "../tools/tool-manager.js";
 
 export interface IpcContext {
   reportWindow: BrowserWindowType | null;
+  isDev: boolean;
+  appRoot: string;
+  nodeBinary: string;
 }
 
 export function registerIpcHandlers(ctx: IpcContext): void {
@@ -54,5 +58,12 @@ export function registerIpcHandlers(ctx: IpcContext): void {
       },
     });
     await win.loadURL(url);
+  });
+
+  ipcMain.handle("ensure-builtin-tool", async (_event, toolId: string) => {
+    if (!toolId?.trim()) {
+      throw new Error("toolId 不能为空");
+    }
+    return ensureToolRunning(toolId, ctx.isDev, ctx.appRoot, ctx.nodeBinary);
   });
 }

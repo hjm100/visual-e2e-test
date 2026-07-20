@@ -15,6 +15,7 @@ interface Window {
     openReport: (url: string) => Promise<void>;
     pickFolder: () => Promise<string | null>;
     openExternalTool: (url: string, title?: string) => Promise<void>;
+    ensureBuiltinTool: (toolId: string) => Promise<number>;
   };
   showSaveFilePicker?: (options?: {
     suggestedName?: string;

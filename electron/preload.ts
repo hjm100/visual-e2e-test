@@ -8,4 +8,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   pickFolder: () => ipcRenderer.invoke("pick-folder") as Promise<string | null>,
   openExternalTool: (url: string, title?: string) =>
     ipcRenderer.invoke("open-external-tool", url, title) as Promise<void>,
+  ensureBuiltinTool: (toolId: string) =>
+    ipcRenderer.invoke("ensure-builtin-tool", toolId) as Promise<number>,
 });

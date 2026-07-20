@@ -32,6 +32,17 @@ function BuiltinHostFrame({ tool, iframeSrc, apiOrigin }: BuiltinHostFrameProps)
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      if (window.electronAPI?.ensureBuiltinTool) {
+        try {
+          await window.electronAPI.ensureBuiltinTool(tool.id);
+        } catch (err) {
+          if (!cancelled) {
+            setError(err instanceof Error ? err.message : "工具启动失败");
+          }
+          return;
+        }
+      }
+
       const healthUrl = `${apiOrigin}/api/health`;
       const started = Date.now();
       while (Date.now() - started < 20_000) {
