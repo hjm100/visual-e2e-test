@@ -8,6 +8,7 @@ import {
   SafetyCertificateOutlined,
   SettingOutlined,
   FolderOutlined,
+  ToolOutlined,
 } from "@ant-design/icons";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -28,6 +29,7 @@ const NAV = [
   { key: "/runs", icon: <PlayCircleOutlined />, label: "运行中心" },
   { key: "/validate", icon: <SafetyCertificateOutlined />, label: "校验中心" },
   { key: "/projects", icon: <FolderOutlined />, label: "项目管理" },
+  { key: "/tools", icon: <ToolOutlined />, label: "工具箱" },
 ];
 
 function shortenHomePath(path: string): string {

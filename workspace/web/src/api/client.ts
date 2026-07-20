@@ -187,6 +187,9 @@ export const api = {
       "/api/runs/delete",
       { method: "POST", body: JSON.stringify({ runIds }) },
     ),
+
+  toolsRegistry: () =>
+    request<import("../features/tools/types").ToolRegistryResponse>("/api/tools/registry"),
 };
 
 function draftPayload(draft: ScenarioDraft): Record<string, unknown> {

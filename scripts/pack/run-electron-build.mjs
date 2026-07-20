@@ -233,7 +233,7 @@ for (const step of plan) {
   cleanOutputSubdir(step.subdir);
 }
 
-if ((await run("npx", ["tsc", "-p", "electron/tsconfig.json"], "build electron")) !== 0) {
+if ((await run("npm", ["run", "build:electron"], "build electron")) !== 0) {
   process.exit(1);
 }
 if ((await run("npm", ["run", "build:client"], "build:client")) !== 0) process.exit(1);

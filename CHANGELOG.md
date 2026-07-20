@@ -2,8 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
-
 ## [1.2.0](https://github.com/visual-e2e/visual-e2e-test/compare/v1.1.0...v1.2.0) (2026-07-20)
+
+### Features
+
+- 新增工具箱模块
+  - 侧栏入口，集中放置测试辅助小工具
+  - 内置「图片批量重命名」：按规则批量重命名文件夹中的图片
+  - 支持添加自定义工具（名称、地址、图标、描述），数据保存在本机
+  - 点击工具卡片即可打开；自定义工具可在卡片菜单中编辑或删除
+  - 自定义工具点击卡片直接新窗口打开，不再进入详情页
 
 ## [1.1.0](https://github.com/visual-e2e/visual-e2e-test/compare/v1.0.0...v1.1.0) (2026-07-14)
 

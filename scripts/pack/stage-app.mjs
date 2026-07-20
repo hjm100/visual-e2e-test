@@ -90,7 +90,48 @@ function main() {
   cpSync(settingsSrc, join(stageRoot, "config", "settings.json"));
   console.log("Staged config/settings.json");
 
+  stageTools(repoRoot, stageRoot);
+
   console.log(`\nSidecar app staged at: ${stageRoot}`);
+}
+
+function stageTools(repoRoot, stageRoot) {
+  const toolsRoot = join(repoRoot, "tools");
+  const registryPath = join(toolsRoot, "registry.json");
+  if (!existsSync(registryPath)) return;
+
+  const destTools = join(stageRoot, "tools");
+  mkdirSync(destTools, { recursive: true });
+  cpSync(registryPath, join(destTools, "registry.json"));
+
+  const registry = JSON.parse(readFileSync(registryPath, "utf-8"));
+  for (const tool of registry.tools ?? []) {
+    const entry = tool.entry ?? tool.id;
+    const src = join(toolsRoot, entry);
+    const dest = join(destTools, entry);
+    const artifacts = [
+      ["server/dist", join(src, "server/dist")],
+      ["web/dist", join(src, "web/dist")],
+      ["package.json", join(src, "package.json")],
+      ["tool.json", join(src, "tool.json")],
+    ];
+    for (const [rel, abs] of artifacts) {
+      if (!existsSync(abs)) {
+        console.error(`Missing tool build: ${join(entry, rel)} — run npm run tools:build`);
+        process.exit(1);
+      }
+      const target = join(dest, rel);
+      mkdirSync(dirname(target), { recursive: true });
+      copyFiltered(abs, target);
+    }
+    const nm = join(src, "node_modules");
+    if (!existsSync(nm)) {
+      console.error(`Missing tool node_modules: ${entry} — run npm run tools:install`);
+      process.exit(1);
+    }
+    copyFiltered(nm, join(dest, "node_modules"));
+    console.log(`Staged tools/${entry}/`);
+  }
 }
 
 main();

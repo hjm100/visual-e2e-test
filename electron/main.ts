@@ -3,6 +3,7 @@ import { cleanupIfNeeded } from "./installer-cleanup.js";
 import { registerIpcHandlers } from "./ipc/handlers.js";
 import { buildApplicationMenu } from "./menu/application-menu.js";
 import { startSidecar, stopSidecar } from "./sidecar.js";
+import { stopAllTools } from "./tools/tool-manager.js";
 import type { StorageLayout } from "./storage.js";
 import { configureEditSupport } from "./web-contents/edit-support.js";
 import { createMainWindow } from "./windows/create-window.js";
@@ -36,6 +37,7 @@ app.whenReady().then(bootstrap).catch((err) => {
 
 app.on("before-quit", () => {
   stopSidecar();
+  stopAllTools();
   const win = ipcContext.reportWindow;
   if (win && !win.isDestroyed()) win.destroy();
 });

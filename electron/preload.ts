@@ -5,4 +5,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   saveFile: (defaultName: string, data: ArrayBuffer) =>
     ipcRenderer.invoke("save-file", defaultName, data) as Promise<string | null>,
   openReport: (url: string) => ipcRenderer.invoke("open-report", url) as Promise<void>,
+  pickFolder: () => ipcRenderer.invoke("pick-folder") as Promise<string | null>,
+  openExternalTool: (url: string, title?: string) =>
+    ipcRenderer.invoke("open-external-tool", url, title) as Promise<void>,
 });

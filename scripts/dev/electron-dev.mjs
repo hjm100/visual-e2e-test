@@ -13,7 +13,7 @@ const buildEngine = spawnSync("npm", ["run", "build:engine"], {
 });
 if (buildEngine.status !== 0) process.exit(buildEngine.status ?? 1);
 
-const tsc = spawnSync("npx", ["tsc", "-p", "electron/tsconfig.json"], {
+const tsc = spawnSync("npm", ["run", "build:electron"], {
   cwd: REPO_ROOT,
   stdio: "inherit",
   env: process.env,
@@ -26,6 +26,12 @@ const buildServer = spawnSync("npm", ["run", "build:server"], {
   env: process.env,
 });
 if (buildServer.status !== 0) process.exit(buildServer.status ?? 1);
+
+const tools = spawn("node", ["scripts/dev/tools.mjs"], {
+  cwd: REPO_ROOT,
+  stdio: "inherit",
+  env: process.env,
+});
 
 const vite = spawn("node", ["scripts/dev/electron-web.mjs"], {
   cwd: REPO_ROOT,
@@ -40,6 +46,7 @@ const electron = spawn("npx", ["electron", "."], {
 });
 
 function shutdown(signal) {
+  if (!tools.killed) tools.kill(signal);
   if (!vite.killed) vite.kill(signal);
   if (!electron.killed) electron.kill(signal);
 }
@@ -53,5 +60,9 @@ electron.on("exit", (code) => {
 });
 
 vite.on("exit", (code) => {
+  if (code && code !== 0) shutdown("SIGTERM");
+});
+
+tools.on("exit", (code) => {
   if (code && code !== 0) shutdown("SIGTERM");
 });

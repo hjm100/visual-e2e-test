@@ -9,6 +9,8 @@ import { RunCenterPage } from "../features/runs/RunCenterPage";
 import { ValidateCenterPage } from "../features/validate/ValidateCenterPage";
 import { SettingsPage } from "../features/config/SettingsPage";
 import { ProjectsPage } from "../features/projects/ProjectsPage";
+import { ToolsHubPage } from "../features/tools/ToolsHubPage";
+import { ToolHostPage } from "../features/tools/ToolHostPage";
 
 export function AppRoutes() {
   return (
@@ -28,6 +30,8 @@ export function AppRoutes() {
           <Route path="/runs" element={<RunCenterPage />} />
           <Route path="/validate" element={<ValidateCenterPage />} />
           <Route path="/projects" element={<ProjectsPage />} />
+          <Route path="/tools" element={<ToolsHubPage />} />
+          <Route path="/tools/:toolId" element={<ToolHostPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/scenarios" replace />} />
       </Routes>

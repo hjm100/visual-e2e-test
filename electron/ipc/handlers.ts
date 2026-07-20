@@ -1,10 +1,10 @@
 import { writeFileSync } from "node:fs";
 import path from "node:path";
-import { app, dialog, ipcMain, type BrowserWindow } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, type BrowserWindow as BrowserWindowType } from "electron";
 import { createReportWindow } from "../windows/create-window.js";
 
 export interface IpcContext {
-  reportWindow: BrowserWindow | null;
+  reportWindow: BrowserWindowType | null;
 }
 
 export function registerIpcHandlers(ctx: IpcContext): void {
@@ -17,6 +17,14 @@ export function registerIpcHandlers(ctx: IpcContext): void {
     if (canceled || !filePath) return null;
     writeFileSync(filePath, Buffer.from(data));
     return filePath;
+  });
+
+  ipcMain.handle("pick-folder", async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      properties: ["openDirectory"],
+    });
+    if (canceled || filePaths.length === 0) return null;
+    return filePaths[0] ?? null;
   });
 
   ipcMain.handle("open-report", async (_event, url: string) => {
@@ -32,5 +40,19 @@ export function registerIpcHandlers(ctx: IpcContext): void {
       if (ctx.reportWindow === win) ctx.reportWindow = null;
     });
     ctx.reportWindow = win;
+  });
+
+  ipcMain.handle("open-external-tool", async (_event, url: string, title?: string) => {
+    const win = new BrowserWindow({
+      width: 1280,
+      height: 900,
+      center: true,
+      title: title?.trim() || "外部工具",
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+    await win.loadURL(url);
   });
 }
