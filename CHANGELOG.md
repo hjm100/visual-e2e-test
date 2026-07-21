@@ -10,6 +10,9 @@ All notable changes to this project will be documented in this file.
 - 自定义工具支持选择打开方式
   - 已适配的工具可直接嵌入应用，也可使用独立窗口打开
   - 未配置图标时自动使用工具网站的 favicon
+- 应用菜单支持检测新版本
+  - 根据当前系统和架构匹配对应的安装包
+  - 发现新版本后可打开下载地址
 
 ### Fixes
 

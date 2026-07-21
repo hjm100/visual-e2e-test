@@ -1,5 +1,6 @@
 import { app, type MenuItemConstructorOptions } from "electron";
 import { showAboutDialog } from "./about-dialog.js";
+import { checkForUpdates } from "./update-checker.js";
 import { openStorageInFileManager, type StorageLayout } from "../storage.js";
 
 export function buildAppMenu(layout: StorageLayout): MenuItemConstructorOptions {
@@ -11,6 +12,13 @@ export function buildAppMenu(layout: StorageLayout): MenuItemConstructorOptions 
           label: "关于 Visual E2E Test",
           click: () => showAboutDialog(),
         },
+        {
+          label: "检测更新",
+          click: () => {
+            void checkForUpdates();
+          },
+        },
+        { type: "separator" },
         {
           label: "打开数据目录",
           click: () => {
@@ -38,6 +46,13 @@ export function buildAppMenu(layout: StorageLayout): MenuItemConstructorOptions 
         label: "关于 Visual E2E Test",
         click: () => showAboutDialog(),
       },
+      {
+        label: "检测更新",
+        click: () => {
+          void checkForUpdates();
+        },
+      },
+      { type: "separator" },
       {
         label: "打开数据目录",
         click: () => {
