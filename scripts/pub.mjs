@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 /**
- * 发包：校验本机安装包 → npm run upload:cdn → 推送 master → 打 tag →
+ * 发包：校验或构建本机安装包 → npm run upload:cdn → 推送 master → 打 tag →
  * 用 gh 创建 GitHub Release 并上传资产（双传备份）。
  *
  * 发版前在本机准备：
  *   npm run download:chromium -- all
- *   npm run electron:build:all
  *   已 export QINIU_ACCESS_KEY / QINIU_SECRET_KEY
  *
  * 用法: node scripts/pub.mjs
@@ -14,7 +13,10 @@ import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadCdnConfig, versionManifestUrl } from "./lib/cdn-config.mjs";
-import { collectReleaseAssets } from "./lib/release-assets.mjs";
+import {
+  collectReleaseAssets,
+  ReleaseAssetsError,
+} from "./lib/release-assets.mjs";
 import { readVersion } from "./lib/version.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -49,6 +51,17 @@ function requireGh() {
   }
 }
 
+function collectOrBuildReleaseAssets(version) {
+  try {
+    return collectReleaseAssets(version);
+  } catch (err) {
+    if (!(err instanceof ReleaseAssetsError)) throw err;
+    console.warn(`${err.message}\n将自动构建当前版本的全部安装包…`);
+    run("npm", ["run", "electron:build:all"]);
+    return collectReleaseAssets(version);
+  }
+}
+
 function main() {
   const current = git("rev-parse", "--abbrev-ref", "HEAD");
   if (current !== DEFAULT_BRANCH) {
@@ -75,7 +88,7 @@ function main() {
   try {
     requireGh();
     cdnCfg = loadCdnConfig();
-    assets = collectReleaseAssets();
+    assets = collectOrBuildReleaseAssets(version);
   } catch (err) {
     console.error(err.message);
     process.exit(1);

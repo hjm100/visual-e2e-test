@@ -16,7 +16,7 @@ const force = process.argv.includes("--force");
 
 async function main() {
   const version = readVersion();
-  const assets = collectReleaseAssets();
+  const assets = collectReleaseAssets(version);
 
   console.log(`版本: ${version}${force ? " (--force)" : ""}`);
   console.log("安装包:");
