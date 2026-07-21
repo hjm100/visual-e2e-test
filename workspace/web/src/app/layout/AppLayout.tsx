@@ -1,4 +1,5 @@
-import { Layout, Menu, Typography, Alert } from "antd";
+import { Suspense } from "react";
+import { Layout, Menu, Typography, Alert, Spin } from "antd";
 import {
   AppstoreOutlined,
   DatabaseOutlined,
@@ -111,7 +112,9 @@ export function AppLayout() {
         </Sider>
 
         <Content className="app-shell__main">
-          <Outlet key={projectId} />
+          <Suspense fallback={<Spin size="large" />}>
+            <Outlet key={projectId} />
+          </Suspense>
         </Content>
       </Layout>
     </Layout>

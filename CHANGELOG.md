@@ -22,6 +22,14 @@ All notable changes to this project will be documented in this file.
   - 点击工具卡片即可打开；自定义工具可在卡片菜单中编辑或删除
   - 自定义工具点击卡片直接新窗口打开，不再进入详情页
 
+### Improvements
+
+- 优化客户端安装包体积
+  - 移除安装包中不参与运行的开发与构建资源
+  - 保留浏览器安装、测试运行和内置工具等完整功能
+- 优化工作台首次加载速度
+  - 各功能页面改为按需加载，减少启动时需要加载的资源
+
 ## [1.1.0](https://github.com/visual-e2e/visual-e2e-test/compare/v1.0.0...v1.1.0) (2026-07-14)
 
 ### Features

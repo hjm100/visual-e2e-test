@@ -1,17 +1,67 @@
+import { lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "./layout/AppLayout";
-import { ScenarioStudioPage } from "../features/studio/ScenarioStudioPage";
-import { VariablesPage } from "../features/fixtures/VariablesPage";
-import { MacroListPage } from "../features/fixtures/MacroListPage";
-import { RuleListPage } from "../features/fixtures/RuleListPage";
-import { ProfileListPage } from "../features/profiles/ProfileListPage";
-import { RunCenterPage } from "../features/runs/RunCenterPage";
-import { ValidateCenterPage } from "../features/validate/ValidateCenterPage";
-import { SettingsPage } from "../features/config/SettingsPage";
-import { BrowserRuntimePage } from "../features/config/BrowserRuntimePage";
-import { ProjectsPage } from "../features/projects/ProjectsPage";
-import { ToolsHubPage } from "../features/tools/ToolsHubPage";
-import { ToolHostPage } from "../features/tools/ToolHostPage";
+
+const ScenarioStudioPage = lazy(() =>
+  import("../features/studio/ScenarioStudioPage").then((module) => ({
+    default: module.ScenarioStudioPage,
+  })),
+);
+const VariablesPage = lazy(() =>
+  import("../features/fixtures/VariablesPage").then((module) => ({
+    default: module.VariablesPage,
+  })),
+);
+const MacroListPage = lazy(() =>
+  import("../features/fixtures/MacroListPage").then((module) => ({
+    default: module.MacroListPage,
+  })),
+);
+const RuleListPage = lazy(() =>
+  import("../features/fixtures/RuleListPage").then((module) => ({
+    default: module.RuleListPage,
+  })),
+);
+const ProfileListPage = lazy(() =>
+  import("../features/profiles/ProfileListPage").then((module) => ({
+    default: module.ProfileListPage,
+  })),
+);
+const RunCenterPage = lazy(() =>
+  import("../features/runs/RunCenterPage").then((module) => ({
+    default: module.RunCenterPage,
+  })),
+);
+const ValidateCenterPage = lazy(() =>
+  import("../features/validate/ValidateCenterPage").then((module) => ({
+    default: module.ValidateCenterPage,
+  })),
+);
+const SettingsPage = lazy(() =>
+  import("../features/config/SettingsPage").then((module) => ({
+    default: module.SettingsPage,
+  })),
+);
+const BrowserRuntimePage = lazy(() =>
+  import("../features/config/BrowserRuntimePage").then((module) => ({
+    default: module.BrowserRuntimePage,
+  })),
+);
+const ProjectsPage = lazy(() =>
+  import("../features/projects/ProjectsPage").then((module) => ({
+    default: module.ProjectsPage,
+  })),
+);
+const ToolsHubPage = lazy(() =>
+  import("../features/tools/ToolsHubPage").then((module) => ({
+    default: module.ToolsHubPage,
+  })),
+);
+const ToolHostPage = lazy(() =>
+  import("../features/tools/ToolHostPage").then((module) => ({
+    default: module.ToolHostPage,
+  })),
+);
 
 export function AppRoutes() {
   return (
