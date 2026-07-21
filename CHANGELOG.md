@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 
 ## [1.3.0](https://github.com/visual-e2e/visual-e2e-test/compare/v1.2.0...v1.3.0) (2026-07-21)
 
+### Features
+
+- 自定义工具支持选择打开方式
+  - 已适配的工具可直接嵌入应用，也可使用独立窗口打开
+  - 未配置图标时自动使用工具网站的 favicon
+
 ### Fixes
 
 - 修复图片批量重命名的列表展示与命名设置
@@ -12,6 +18,7 @@ All notable changes to this project will be documented in this file.
   - 文件编号与实际重命名序号保持一致
   - 新文件名前缀默认为 `image`
   - 文件默认按名称自然升序排列
+- 修复关闭外部工具窗口时偶发错误提示的问题
 
 ## [1.2.0](https://github.com/visual-e2e/visual-e2e-test/compare/v1.1.0...v1.2.0) (2026-07-20)
 
