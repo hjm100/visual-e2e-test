@@ -1,6 +1,6 @@
 {
   "name": "visual-e2e-test",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Visual workbench for JSON-driven E2E automated testing",
   "type": "module",
   "main": "electron/dist/main.js",
@@ -10,8 +10,8 @@
     "build:engine": "tsc",
     "build:server": "npm run build --prefix workspace/server",
     "build:web": "npm run build --prefix workspace/web",
-    "build:electron": "tsc -p electron/tsconfig.json",
-    "build:client": "npm run build:engine && npm run build:server && npm run build:web && npm run stage:sidecar",
+    "build:electron": "tsc -p electron/tsconfig.json && tsc -p electron/tsconfig.preload.json",
+    "build:client": "npm run build:engine && npm run build:server && npm run build:web && npm run tools:build && npm run stage:sidecar",
     "stage:sidecar": "node scripts/pack/stage-app.mjs",
     "download:node": "node scripts/pack/download-node.mjs",
     "download:node:all": "node scripts/pack/download-node.mjs --all",
@@ -22,6 +22,10 @@
     "workspace": "node scripts/dev/workspace.mjs",
     "workspace:web": "node scripts/dev/workspace-web.mjs",
     "workspace:server": "node scripts/dev/workspace-server.mjs",
+    "tools:install": "node scripts/tools/install-all.mjs",
+    "tools:dev": "node scripts/dev/tools.mjs",
+    "tools:build": "node scripts/tools/build-all.mjs",
+    "tools:list": "node scripts/tools/list.mjs",
     "electron:dev": "node scripts/dev/electron-dev.mjs",
     "electron:build:mac:arm64": "node scripts/pack/run-electron-build.mjs mac arm64",
     "electron:build:mac:x64": "node scripts/pack/run-electron-build.mjs mac x64",
@@ -34,7 +38,7 @@
   },
   "dependencies": {
     "dotenv": "^16.4.5",
-    "playwright": "^1.49.0",
+    "playwright": "^1.61.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -58,7 +62,8 @@
     },
     "files": [
       "electron/dist/**/*",
-      "package.json"
+      "package.json",
+      "!node_modules/**/*"
     ],
     "extraResources": [
       {
@@ -71,13 +76,6 @@
       {
         "from": "electron/resources/node",
         "to": "node",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
-        "from": "electron/resources/playwright-browsers",
-        "to": "playwright-browsers",
         "filter": [
           "**/*"
         ]

@@ -14,6 +14,8 @@ import { registerFixtureRoutes } from "./routes/fixtures.js";
 import { registerProfileRoutes } from "./routes/profiles.js";
 import { registerRunRoutes } from "./routes/runs.js";
 import { registerConfigRoutes } from "./routes/config.js";
+import { registerBrowserRoutes } from "./routes/browser.js";
+import { registerToolsRegistryRoutes } from "./routes/tools-registry.js";
 
 async function main(): Promise<void> {
   const config = loadConfig();
@@ -52,6 +54,8 @@ async function main(): Promise<void> {
   registerProfileRoutes(app, config);
   registerRunRoutes(app, runService, config);
   registerConfigRoutes(app, settingsRepo);
+  registerBrowserRoutes(app, config);
+  registerToolsRegistryRoutes(app, config.e2eRoot);
 
   if (config.serveWeb) {
     await app.register(fastifyStatic, {

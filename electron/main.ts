@@ -2,7 +2,9 @@ import { app, Menu, type BrowserWindow } from "electron";
 import { cleanupIfNeeded } from "./installer-cleanup.js";
 import { registerIpcHandlers } from "./ipc/handlers.js";
 import { buildApplicationMenu } from "./menu/application-menu.js";
+import { bundledAppRoot, bundledNodeBinary } from "./paths.js";
 import { startSidecar, stopSidecar } from "./sidecar.js";
+import { stopAllTools } from "./tools/tool-manager.js";
 import type { StorageLayout } from "./storage.js";
 import { configureEditSupport } from "./web-contents/edit-support.js";
 import { createMainWindow } from "./windows/create-window.js";
@@ -12,7 +14,12 @@ const isDev = !app.isPackaged;
 let mainWindow: BrowserWindow | null = null;
 let targetUrl = "";
 let storageLayout: StorageLayout | null = null;
-const ipcContext = { reportWindow: null as BrowserWindow | null };
+const ipcContext = {
+  reportWindow: null as BrowserWindow | null,
+  isDev,
+  appRoot: bundledAppRoot(isDev, process.resourcesPath),
+  nodeBinary: bundledNodeBinary(isDev, process.resourcesPath),
+};
 
 async function bootstrap(): Promise<void> {
   registerIpcHandlers(ipcContext);
@@ -36,6 +43,7 @@ app.whenReady().then(bootstrap).catch((err) => {
 
 app.on("before-quit", () => {
   stopSidecar();
+  stopAllTools();
   const win = ipcContext.reportWindow;
   if (win && !win.isDestroyed()) win.destroy();
 });

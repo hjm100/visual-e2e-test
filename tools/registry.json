@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "tools": [
+    {
+      "id": "image-rename",
+      "name": "图片批量重命名",
+      "description": "按规则批量重命名文件夹中的图片",
+      "entry": "image-rename",
+      "icon": "picture",
+      "category": "file",
+      "devPort": 3201,
+      "prodPort": 7201,
+      "webDevPort": 5201
+    }
+  ]
+}

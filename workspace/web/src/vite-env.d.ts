@@ -9,6 +9,16 @@ interface ImportMeta {
 }
 
 interface Window {
+  electronAPI?: {
+    isElectron: boolean;
+    saveFile: (defaultName: string, data: ArrayBuffer) => Promise<string | null>;
+    openReport: (url: string) => Promise<void>;
+    pickFolder: () => Promise<string | null>;
+    pickExecutable: () => Promise<string | null>;
+    showItemInFolder: (path: string) => Promise<void>;
+    openExternalTool: (url: string, title?: string) => Promise<void>;
+    ensureBuiltinTool: (toolId: string) => Promise<number>;
+  };
   showSaveFilePicker?: (options?: {
     suggestedName?: string;
     startIn?: "desktop" | "documents" | "downloads" | "music" | "pictures" | "videos";

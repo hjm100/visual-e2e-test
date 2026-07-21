@@ -2,7 +2,17 @@
 /**
  * Stage bundled app resources for Electron extraResources (resources/app).
  */
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { execFileSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -16,16 +26,93 @@ const REQUIRED_BUILDS = [
   ["workspace/web/dist", join(repoRoot, "workspace/web/dist")],
 ];
 
-function copyFiltered(src, dest) {
+const RUNTIME_SCRIPTS = [
+  "run-test.mjs",
+  "paths.mjs",
+  "profile-to-scenario.mjs",
+  "lib/browser-runtime.mjs",
+  "pack/platform.mjs",
+];
+
+function directorySize(root) {
+  return readdirSync(root).reduce((total, name) => {
+    const path = join(root, name);
+    const stat = lstatSync(path);
+    if (stat.isSymbolicLink()) return total;
+    return total + (stat.isDirectory() ? directorySize(path) : stat.size);
+  }, 0);
+}
+
+function verifyStagedSize() {
+  const bytes = directorySize(stageRoot);
+  const sizeMiB = bytes / 1024 / 1024;
+  const maxMiB = Number(process.env.MAX_STAGED_APP_MIB ?? 200);
+  console.log(`Staged app size: ${sizeMiB.toFixed(1)} MiB (budget: ${maxMiB} MiB)`);
+  if (!Number.isFinite(maxMiB) || maxMiB <= 0) {
+    throw new Error(`Invalid MAX_STAGED_APP_MIB: ${process.env.MAX_STAGED_APP_MIB}`);
+  }
+  if (sizeMiB > maxMiB) {
+    throw new Error(`Staged app exceeds size budget: ${sizeMiB.toFixed(1)} MiB > ${maxMiB} MiB`);
+  }
+}
+
+function copyFiltered(src, dest, { excludeDeclarations = false } = {}) {
   cpSync(src, dest, {
     recursive: true,
     filter: (source) => {
       const base = source.split(/[/\\]/).pop() ?? "";
       if (base === ".claude" || base === ".git" || base === ".DS_Store") return false;
       if (source.includes(`${join("node_modules", ".cache")}`)) return false;
+      if (excludeDeclarations && (source.endsWith(".d.ts") || source.endsWith(".d.ts.map"))) {
+        return false;
+      }
       return true;
     },
   });
+}
+
+function stageRuntimeScripts() {
+  for (const rel of RUNTIME_SCRIPTS) {
+    const src = join(repoRoot, "scripts", rel);
+    if (!existsSync(src)) {
+      console.error(`Missing runtime script: scripts/${rel}`);
+      process.exit(1);
+    }
+    const dest = join(stageRoot, "scripts", rel);
+    mkdirSync(dirname(dest), { recursive: true });
+    cpSync(src, dest);
+  }
+  console.log(`Staged ${RUNTIME_SCRIPTS.length} runtime scripts`);
+}
+
+function stageProductionDependencies(sourceRoot, destinationRoot, label) {
+  const packagePath = join(sourceRoot, "package.json");
+  const lockPath = join(sourceRoot, "package-lock.json");
+  const nodeModulesPath = join(sourceRoot, "node_modules");
+
+  for (const required of [packagePath, lockPath, nodeModulesPath]) {
+    if (!existsSync(required)) {
+      console.error(`Missing ${label} dependency input: ${required}`);
+      process.exit(1);
+    }
+  }
+
+  mkdirSync(destinationRoot, { recursive: true });
+  cpSync(packagePath, join(destinationRoot, "package.json"));
+  cpSync(lockPath, join(destinationRoot, "package-lock.json"));
+  copyFiltered(nodeModulesPath, join(destinationRoot, "node_modules"));
+
+  const npm = process.platform === "win32" ? "npm.cmd" : "npm";
+  execFileSync(npm, ["prune", "--omit=dev", "--no-audit", "--no-fund"], {
+    cwd: destinationRoot,
+    env: {
+      ...process.env,
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1",
+    },
+    stdio: "inherit",
+  });
+  rmSync(join(destinationRoot, "package-lock.json"), { force: true });
+  console.log(`Staged ${label} production dependencies`);
 }
 
 function main() {
@@ -43,54 +130,77 @@ function main() {
   for (const [rel, abs] of REQUIRED_BUILDS) {
     const target = join(stageRoot, rel);
     mkdirSync(dirname(target), { recursive: true });
-    copyFiltered(abs, target);
+    copyFiltered(abs, target, { excludeDeclarations: true });
     console.log(`Staged ${rel}`);
   }
 
-  for (const rel of ["scripts", "template"]) {
-    const src = join(repoRoot, rel);
-    if (!existsSync(src)) continue;
-    copyFiltered(src, join(stageRoot, rel));
-    console.log(`Staged ${rel}/`);
+  stageRuntimeScripts();
+  const templateRoot = join(repoRoot, "template");
+  if (existsSync(templateRoot)) {
+    copyFiltered(templateRoot, join(stageRoot, "template"));
+    console.log("Staged template/");
   }
 
   const pkgSrc = join(repoRoot, "package.json");
-  const serverPkgSrc = join(repoRoot, "workspace/server/package.json");
   const pkg = JSON.parse(readFileSync(pkgSrc, "utf-8"));
-  const serverPkg = JSON.parse(readFileSync(serverPkgSrc, "utf-8"));
   const stagedPkg = {
     name: pkg.name,
     version: pkg.version,
     type: pkg.type,
-    dependencies: {
-      ...pkg.dependencies,
-      ...serverPkg.dependencies,
-    },
+    dependencies: pkg.dependencies,
   };
   writeFileSync(join(stageRoot, "package.json"), `${JSON.stringify(stagedPkg, null, 2)}\n`);
 
-  const nmSrc = join(repoRoot, "node_modules");
-  if (!existsSync(nmSrc)) {
-    console.error("Missing node_modules. Run npm install first.");
-    process.exit(1);
-  }
-  copyFiltered(nmSrc, join(stageRoot, "node_modules"));
-  console.log("Staged node_modules/");
-
-  const serverNmSrc = join(repoRoot, "workspace/server/node_modules");
-  if (!existsSync(serverNmSrc)) {
-    console.error("Missing workspace/server/node_modules. Run: npm install --prefix workspace/server");
-    process.exit(1);
-  }
-  copyFiltered(serverNmSrc, join(stageRoot, "workspace/server/node_modules"));
-  console.log("Staged workspace/server/node_modules/");
+  stageProductionDependencies(repoRoot, stageRoot, "root");
+  writeFileSync(join(stageRoot, "package.json"), `${JSON.stringify(stagedPkg, null, 2)}\n`);
+  stageProductionDependencies(
+    join(repoRoot, "workspace/server"),
+    join(stageRoot, "workspace/server"),
+    "workspace server",
+  );
 
   const settingsSrc = join(repoRoot, "config", "settings.json");
   mkdirSync(join(stageRoot, "config"), { recursive: true });
   cpSync(settingsSrc, join(stageRoot, "config", "settings.json"));
   console.log("Staged config/settings.json");
 
+  stageTools(repoRoot, stageRoot);
+
+  verifyStagedSize();
   console.log(`\nSidecar app staged at: ${stageRoot}`);
+}
+
+function stageTools(repoRoot, stageRoot) {
+  const toolsRoot = join(repoRoot, "tools");
+  const registryPath = join(toolsRoot, "registry.json");
+  if (!existsSync(registryPath)) return;
+
+  const destTools = join(stageRoot, "tools");
+  mkdirSync(destTools, { recursive: true });
+  cpSync(registryPath, join(destTools, "registry.json"));
+
+  const registry = JSON.parse(readFileSync(registryPath, "utf-8"));
+  for (const tool of registry.tools ?? []) {
+    const entry = tool.entry ?? tool.id;
+    const src = join(toolsRoot, entry);
+    const dest = join(destTools, entry);
+    const artifacts = [
+      ["server/dist", join(src, "server/dist")],
+      ["web/dist", join(src, "web/dist")],
+      ["tool.json", join(src, "tool.json")],
+    ];
+    for (const [rel, abs] of artifacts) {
+      if (!existsSync(abs)) {
+        console.error(`Missing tool build: ${join(entry, rel)} — run npm run tools:build`);
+        process.exit(1);
+      }
+      const target = join(dest, rel);
+      mkdirSync(dirname(target), { recursive: true });
+      copyFiltered(abs, target);
+    }
+    stageProductionDependencies(src, dest, `tool ${entry}`);
+    console.log(`Staged tools/${entry}/`);
+  }
 }
 
 main();

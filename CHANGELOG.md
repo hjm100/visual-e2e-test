@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0](https://github.com/visual-e2e/visual-e2e-test/compare/v1.1.0...v1.2.0) (2026-07-20)
+
+### Features
+
+- 新增浏览器环境配置模块
+  - 支持自动检测本机浏览器
+  - 支持一键安装 Playwright Chromium
+  - 支持手动选择 Chrome 或 Chromium 可执行文件
+  - 运行测试前自动检查浏览器是否就绪
+- 调整客户端浏览器分发方式
+  - Chromium 不再内置到安装包，减小安装包体积
+  - Playwright 运行时仍随客户端提供
+  - 浏览器安装到应用数据目录，可独立更新和重新配置
+- 新增工具箱模块
+  - 侧栏入口，集中放置测试辅助小工具
+  - 内置「图片批量重命名」：按规则批量重命名文件夹中的图片
+  - 支持添加自定义工具（名称、地址、图标、描述），数据保存在本机
+  - 点击工具卡片即可打开；自定义工具可在卡片菜单中编辑或删除
+  - 自定义工具点击卡片直接新窗口打开，不再进入详情页
+
+### Improvements
+
+- 优化客户端安装包体积
+  - 移除安装包中不参与运行的开发与构建资源
+  - 保留浏览器安装、测试运行和内置工具等完整功能
+- 优化工作台首次加载速度
+  - 各功能页面改为按需加载，减少启动时需要加载的资源
+
 ## [1.1.0](https://github.com/visual-e2e/visual-e2e-test/compare/v1.0.0...v1.1.0) (2026-07-14)
 
 ### Features
