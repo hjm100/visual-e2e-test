@@ -5,6 +5,7 @@ import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import { ScrollPane } from "../../components/layout/ScrollPane";
+import { getCustomTool, isCustomToolId, type CustomTool } from "./custom-tools-store";
 import { TOOL_MSG, toolWebOrigin, type ToolRegistryEntry } from "./types";
 import "./tools.css";
 
@@ -129,14 +130,61 @@ function BuiltinHostFrame({ tool, iframeSrc, apiOrigin }: BuiltinHostFrameProps)
   );
 }
 
+function CustomHostFrame({ tool }: { tool: CustomTool }) {
+  const [iframeLoaded, setIframeLoaded] = useState(false);
+
+  return (
+    <>
+      {!iframeLoaded && (
+        <div className="tool-host__loading">
+          <div className="tool-host__loading-inner">
+            <Spin indicator={<LoadingOutlined style={{ fontSize: 32 }} spin />} />
+            <Typography.Text type="secondary">正在加载 {tool.name}…</Typography.Text>
+          </div>
+        </div>
+      )}
+      <iframe
+        className="tool-host__iframe"
+        src={tool.url}
+        title={tool.name}
+        sandbox="allow-scripts allow-forms allow-popups allow-same-origin"
+        referrerPolicy="no-referrer"
+        style={{ opacity: iframeLoaded ? 1 : 0 }}
+        onLoad={() => setIframeLoaded(true)}
+      />
+    </>
+  );
+}
+
 export function ToolHostPage() {
   const { toolId } = useParams<{ toolId: string }>();
   const isDev = import.meta.env.DEV;
+  const isCustomTool = Boolean(toolId && isCustomToolId(toolId));
+  const customTool = isCustomTool && toolId ? getCustomTool(toolId) : undefined;
 
   const registryQuery = useQuery({
     queryKey: ["tools-registry"],
     queryFn: api.toolsRegistry,
+    enabled: !isCustomTool,
   });
+
+  if (customTool?.openMode === "embedded") {
+    return (
+      <div className="tool-host">
+        <CustomHostFrame tool={customTool} />
+      </div>
+    );
+  }
+
+  if (isCustomTool) {
+    return (
+      <ScrollPane>
+        <Typography.Text type="danger">
+          {customTool ? "该工具配置为新窗口打开" : `未找到工具: ${toolId}`}
+        </Typography.Text>
+      </ScrollPane>
+    );
+  }
 
   const builtinTool = registryQuery.data?.tools.find((t) => t.id === toolId);
 

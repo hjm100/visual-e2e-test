@@ -12,6 +12,7 @@ import {
   Form,
   Input,
   Dropdown,
+  Radio,
 } from "antd";
 import type { MenuProps } from "antd";
 import {
@@ -32,6 +33,7 @@ import {
   listCustomTools,
   updateCustomTool,
   type CustomTool,
+  type CustomToolOpenMode,
 } from "./custom-tools-store";
 import "./tools.css";
 
@@ -44,6 +46,7 @@ interface ToolFormValues {
   url: string;
   iconUrl?: string;
   description?: string;
+  openMode: CustomToolOpenMode;
 }
 
 function BuiltinIcon({ icon }: { icon?: string }) {
@@ -51,12 +54,20 @@ function BuiltinIcon({ icon }: { icon?: string }) {
   return <ToolOutlined />;
 }
 
-function CustomIcon({ iconUrl }: { iconUrl?: string }) {
+function CustomIcon({ iconUrl, toolUrl }: { iconUrl?: string; toolUrl: string }) {
   const [failed, setFailed] = useState(false);
-  if (!iconUrl || failed) return <ToolOutlined />;
+  let src = iconUrl;
+  if (!src) {
+    try {
+      src = new URL("/favicon.ico", toolUrl).href;
+    } catch {
+      src = undefined;
+    }
+  }
+  if (!src || failed) return <ToolOutlined />;
   return (
     <img
-      src={iconUrl}
+      src={src}
       alt=""
       className="tools-hub__icon-img"
       onError={() => setFailed(true)}
@@ -121,6 +132,7 @@ export function ToolsHubPage() {
   const openCreateModal = () => {
     setEditing(null);
     form.resetFields();
+    form.setFieldValue("openMode", "external");
     setModalOpen(true);
   };
 
@@ -131,6 +143,7 @@ export function ToolsHubPage() {
       url: tool.url,
       iconUrl: tool.iconUrl,
       description: tool.description,
+      openMode: tool.openMode,
     });
     setModalOpen(true);
   };
@@ -142,6 +155,7 @@ export function ToolsHubPage() {
       url: values.url.trim(),
       iconUrl: values.iconUrl?.trim() || undefined,
       description: values.description?.trim() || undefined,
+      openMode: values.openMode,
     };
 
     if (editing) {
@@ -195,6 +209,10 @@ export function ToolsHubPage() {
   ];
 
   const openCustomTool = async (tool: CustomTool) => {
+    if (tool.openMode === "embedded") {
+      navigate(`/tools/${tool.id}`);
+      return;
+    }
     if (window.electronAPI?.openExternalTool) {
       try {
         await window.electronAPI.openExternalTool(tool.url, tool.name);
@@ -262,7 +280,11 @@ export function ToolsHubPage() {
                 key={tool.id}
                 title={
                   <>
-                    <CustomIcon iconUrl={tool.iconUrl} />
+                    <CustomIcon
+                      key={`${tool.iconUrl ?? ""}:${tool.url}`}
+                      iconUrl={tool.iconUrl}
+                      toolUrl={tool.url}
+                    />
                     <span className="tools-hub__card-title-text">{tool.name}</span>
                   </>
                 }
@@ -312,9 +334,19 @@ export function ToolsHubPage() {
             <Input placeholder="https://example.com" />
           </Form.Item>
           <Form.Item
+            name="openMode"
+            label="打开方式"
+            rules={[{ required: true, message: "请选择打开方式" }]}
+          >
+            <Radio.Group>
+              <Radio value="external">新窗口打开</Radio>
+              <Radio value="embedded">应用内打开</Radio>
+            </Radio.Group>
+          </Form.Item>
+          <Form.Item
             name="iconUrl"
             label="图标地址"
-            extra="可选，公网图片 URL"
+            extra="可选；未配置时使用工具地址根目录下的 favicon.ico"
             rules={[
               {
                 validator: (_, value?: string) =>

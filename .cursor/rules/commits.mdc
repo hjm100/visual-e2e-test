@@ -24,3 +24,8 @@ chore(release): bump version to 1.1.0
 ```
 
 subject 祈使句，≤ 100 字符，句末不加句号。
+
+## 任务交付
+
+- 完成代码变更后，在最终回复中输出一条符合本规范的建议 commit message。
+- 用户未明确要求提交时，只提供 commit message，不自动创建 commit。

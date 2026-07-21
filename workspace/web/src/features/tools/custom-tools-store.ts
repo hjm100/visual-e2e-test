@@ -1,11 +1,14 @@
 export const CUSTOM_TOOLS_KEY = "vet-tool:hub:custom-tools:v1";
 
+export type CustomToolOpenMode = "embedded" | "external";
+
 export interface CustomTool {
   id: string;
   name: string;
   description?: string;
   iconUrl?: string;
   url: string;
+  openMode: CustomToolOpenMode;
 }
 
 interface CustomToolsStore {
@@ -18,7 +21,11 @@ function readStore(): CustomToolsStore {
     const raw = localStorage.getItem(CUSTOM_TOOLS_KEY);
     if (!raw) return { version: 1, tools: [] };
     const parsed = JSON.parse(raw) as CustomToolsStore;
-    return { version: 1, tools: parsed.tools ?? [] };
+    const tools = (parsed.tools ?? []).map((tool) => ({
+      ...tool,
+      openMode: tool.openMode === "embedded" ? "embedded" as const : "external" as const,
+    }));
+    return { version: 1, tools };
   } catch {
     return { version: 1, tools: [] };
   }

@@ -81,7 +81,16 @@ export function registerIpcHandlers(ctx: IpcContext): void {
         nodeIntegration: false,
       },
     });
-    await win.loadURL(url);
+    let closed = false;
+    win.once("closed", () => {
+      closed = true;
+    });
+    try {
+      await win.loadURL(url);
+    } catch (error) {
+      if (closed || win.isDestroyed()) return;
+      throw error;
+    }
   });
 
   ipcMain.handle("ensure-builtin-tool", async (_event, toolId: string) => {
