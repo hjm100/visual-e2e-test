@@ -21,7 +21,18 @@ export const TOOL_MSG = {
   CACHE_CLEARED: "vet-tool:cache:cleared",
   PICK_FOLDER: "vet-tool:bridge:pick-folder",
   PICK_FOLDER_RESULT: "vet-tool:bridge:pick-folder-result",
+  PROJECT_CONTEXT: "vet-tool:project:context",
+  PROJECT_CONTEXT_REQUEST: "vet-tool:project:context:request",
+  NAVIGATE_SCENARIO: "vet-tool:scenario:navigate",
 } as const;
+
+export interface ToolProjectContextMessage {
+  type: typeof TOOL_MSG.PROJECT_CONTEXT;
+  projectId: string;
+  projectName?: string;
+  baseUrl: string;
+  scenariosRelPath: string;
+}
 
 export function toolWebOrigin(tool: ToolRegistryEntry, isDev: boolean): string {
   const port = isDev ? tool.webDevPort : tool.prodPort;

@@ -11,6 +11,17 @@
       "devPort": 3201,
       "prodPort": 7201,
       "webDevPort": 5201
+    },
+    {
+      "id": "scenario-recorder",
+      "name": "场景录制",
+      "description": "录制浏览器操作并生成场景 JSON",
+      "entry": "scenario-recorder",
+      "icon": "video",
+      "category": "test",
+      "devPort": 3202,
+      "prodPort": 7202,
+      "webDevPort": 5202
     }
   ]
 }

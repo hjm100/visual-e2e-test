@@ -1,13 +1,25 @@
-import { useEffect, useRef, useState } from "react";
-import { Alert, Spin, Typography } from "antd";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Alert, Spin, Typography, message } from "antd";
 import { LoadingOutlined } from "@ant-design/icons";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
+import { useProject } from "../../context/ProjectContext";
 import { ScrollPane } from "../../components/layout/ScrollPane";
 import { getCustomTool, isCustomToolId, type CustomTool } from "./custom-tools-store";
-import { TOOL_MSG, toolWebOrigin, type ToolRegistryEntry } from "./types";
+import {
+  TOOL_MSG,
+  toolWebOrigin,
+  type ToolProjectContextMessage,
+  type ToolRegistryEntry,
+} from "./types";
 import "./tools.css";
+
+function parseBaseUrlFromEnv(content: string): string {
+  const match = content.match(/^BASE_URL=(.*)$/m);
+  if (!match) return "";
+  return match[1].trim().replace(/^["']|["']$/g, "");
+}
 
 interface BuiltinHostFrameProps {
   tool: ToolRegistryEntry;
@@ -21,6 +33,27 @@ function BuiltinHostFrame({ tool, iframeSrc, apiOrigin }: BuiltinHostFrameProps)
   const [iframeLoaded, setIframeLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const webOrigin = toolWebOrigin(tool, import.meta.env.DEV);
+  const { projectId, projects } = useProject();
+  const navigate = useNavigate();
+
+  const envQuery = useQuery({
+    queryKey: ["env", projectId],
+    queryFn: api.getEnv,
+    enabled: Boolean(projectId),
+  });
+
+  const pushProjectContext = useCallback(() => {
+    if (!projectId || !iframeRef.current?.contentWindow) return;
+    const project = projects.find((p) => p.id === projectId);
+    const payload: ToolProjectContextMessage = {
+      type: TOOL_MSG.PROJECT_CONTEXT,
+      projectId,
+      projectName: project?.name,
+      baseUrl: parseBaseUrlFromEnv(envQuery.data?.content ?? ""),
+      scenariosRelPath: `projects/${projectId}/scenarios`,
+    };
+    iframeRef.current.contentWindow.postMessage(payload, webOrigin);
+  }, [projectId, projects, envQuery.data?.content, webOrigin]);
 
   useEffect(() => {
     setReady(false);
@@ -67,25 +100,49 @@ function BuiltinHostFrame({ tool, iframeSrc, apiOrigin }: BuiltinHostFrameProps)
   }, [apiOrigin, tool.id]);
 
   useEffect(() => {
+    if (iframeLoaded && ready) {
+      pushProjectContext();
+    }
+  }, [iframeLoaded, ready, pushProjectContext]);
+
+  useEffect(() => {
     const onMessage = async (event: MessageEvent) => {
       if (event.origin !== webOrigin) return;
-      const data = event.data as { type?: string };
-      if (data?.type !== TOOL_MSG.PICK_FOLDER) return;
+      const data = event.data as {
+        type?: string;
+        module?: string;
+        scenario?: string;
+      };
 
-      let path: string | null = null;
-      if (window.electronAPI?.pickFolder) {
-        path = await window.electronAPI.pickFolder();
+      if (data?.type === TOOL_MSG.PICK_FOLDER) {
+        let path: string | null = null;
+        if (window.electronAPI?.pickFolder) {
+          path = await window.electronAPI.pickFolder();
+        }
+        iframeRef.current?.contentWindow?.postMessage(
+          { type: TOOL_MSG.PICK_FOLDER_RESULT, path },
+          webOrigin,
+        );
+        return;
       }
 
-      iframeRef.current?.contentWindow?.postMessage(
-        { type: TOOL_MSG.PICK_FOLDER_RESULT, path },
-        webOrigin,
-      );
+      if (data?.type === TOOL_MSG.PROJECT_CONTEXT_REQUEST) {
+        pushProjectContext();
+        return;
+      }
+
+      if (data?.type === TOOL_MSG.NAVIGATE_SCENARIO) {
+        const module = data.module?.trim();
+        const scenario = data.scenario?.trim();
+        if (!module || !scenario) return;
+        message.success(`已导入场景，正在打开 ${module}/${scenario}`);
+        navigate(`/scenarios?module=${encodeURIComponent(module)}&scenario=${encodeURIComponent(scenario)}`);
+      }
     };
 
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [webOrigin]);
+  }, [webOrigin, pushProjectContext, navigate]);
 
   if (error) {
     return (
@@ -121,7 +178,7 @@ function BuiltinHostFrame({ tool, iframeSrc, apiOrigin }: BuiltinHostFrameProps)
         className="tool-host__iframe"
         src={iframeSrc}
         title={tool.name}
-        sandbox="allow-scripts allow-forms allow-popups allow-same-origin"
+        sandbox="allow-scripts allow-forms allow-popups allow-same-origin allow-downloads"
         referrerPolicy="no-referrer"
         style={{ opacity: iframeLoaded ? 1 : 0 }}
         onLoad={() => setIframeLoaded(true)}
@@ -147,7 +204,7 @@ function CustomHostFrame({ tool }: { tool: CustomTool }) {
         className="tool-host__iframe"
         src={tool.url}
         title={tool.name}
-        sandbox="allow-scripts allow-forms allow-popups allow-same-origin"
+        sandbox="allow-scripts allow-forms allow-popups allow-same-origin allow-downloads"
         referrerPolicy="no-referrer"
         style={{ opacity: iframeLoaded ? 1 : 0 }}
         onLoad={() => setIframeLoaded(true)}

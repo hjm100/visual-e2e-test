@@ -1,6 +1,8 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { app } from "electron";
+import { resolveStorageLayout } from "../storage.js";
 
 export interface ToolRegistryEntry {
   id: string;
@@ -40,6 +42,28 @@ async function waitForHealth(port: number, timeoutMs: number): Promise<void> {
   throw new Error(`Tool server did not become ready at ${url}`);
 }
 
+async function isHealthy(port: number): Promise<boolean> {
+  try {
+    const res = await fetch(`http://127.0.0.1:${port}/api/health`, {
+      signal: AbortSignal.timeout(2000),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+function buildToolEnv(isDev: boolean, appRoot: string): NodeJS.ProcessEnv {
+  const layout = resolveStorageLayout(isDev, app.getPath("userData"));
+  return {
+    ...process.env,
+    E2E_ROOT: process.env.E2E_ROOT?.trim() || appRoot,
+    PROJECTS_DIR: process.env.PROJECTS_DIR?.trim() || layout.projectsDir,
+    CONFIG_DIR: process.env.CONFIG_DIR?.trim() || layout.configDir,
+    E2E_RUNTIME: process.env.E2E_RUNTIME?.trim() || "client",
+  };
+}
+
 export async function ensureToolRunning(
   toolId: string,
   isDev: boolean,
@@ -53,6 +77,11 @@ export async function ensureToolRunning(
   if (!tool) throw new Error(`Unknown tool: ${toolId}`);
 
   const port = isDev ? tool.devPort : tool.prodPort;
+
+  if (await isHealthy(port)) {
+    return port;
+  }
+
   const toolDir = join(appRoot, "tools", tool.entry);
   const entry = join(toolDir, "server", "dist", "index.js");
 
@@ -63,7 +92,7 @@ export async function ensureToolRunning(
   const child = spawn(nodeBinary, [entry], {
     cwd: toolDir,
     env: {
-      ...process.env,
+      ...buildToolEnv(isDev, appRoot),
       TOOL_ID: tool.id,
       TOOL_PORT: String(port),
       NODE_ENV: isDev ? "development" : "production",

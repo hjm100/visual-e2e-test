@@ -18,6 +18,7 @@ import type { MenuProps } from "antd";
 import {
   PictureOutlined,
   ToolOutlined,
+  VideoCameraOutlined,
   PlusOutlined,
   MoreOutlined,
   EditOutlined,
@@ -39,6 +40,7 @@ import "./tools.css";
 
 const ICONS: Record<string, React.ReactNode> = {
   picture: <PictureOutlined />,
+  video: <VideoCameraOutlined />,
 };
 
 interface ToolFormValues {

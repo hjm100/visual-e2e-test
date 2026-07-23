@@ -17,6 +17,7 @@ import { ExtendsStepsPanel } from "./components/ExtendsStepsPanel";
 import { StudioHeader } from "./components/StudioHeader";
 import { StudioSection } from "./components/StudioSection";
 import { ImportProfileModal } from "./components/ImportProfileModal";
+import { ImportScenarioJsonModal } from "./components/ImportScenarioJsonModal";
 import { JsonPreviewDrawer, type JsonPreviewMode } from "../../components/JsonPreviewDrawer";
 import { RunDetailDrawer } from "../runs/RunDetailDrawer";
 import { seedRunCache } from "../runs/seed-run-cache";
@@ -41,7 +42,30 @@ export function ScenarioStudioPage() {
   const [previewMode, setPreviewMode] = useState<JsonPreviewMode>("draft");
   const [issues, setIssues] = useState<{ level: string; message: string }[]>([]);
   const [importOpen, setImportOpen] = useState(false);
+  const [importJsonOpen, setImportJsonOpen] = useState(false);
   const [runJobId, setRunJobId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const module = search.get("module");
+    const scenario = search.get("scenario") ?? undefined;
+    if (module && module !== activeModule) {
+      setActiveModule(module);
+      setIsNew(false);
+    }
+    if (scenario && scenario !== scenarioFile) {
+      setScenarioFile(scenario);
+      setIsNew(false);
+    }
+    if (module || scenario) {
+      void qc.invalidateQueries({ queryKey: ["modules", projectId] });
+      void qc.invalidateQueries({ queryKey: ["scenarios", projectId] });
+      if (module && scenario) {
+        void qc.invalidateQueries({ queryKey: ["scenario", projectId, module, scenario] });
+      }
+    }
+    // Sync from URL when navigating from recorder import
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
 
   const macrosQuery = useQuery({ queryKey: ["macros", projectId], queryFn: api.macros, enabled: !!projectId });
   const rulesQuery = useQuery({ queryKey: ["rules", projectId], queryFn: api.rules, enabled: !!projectId });
@@ -98,9 +122,17 @@ export function ScenarioStudioPage() {
 
   const saveScenarioMut = useMutation({
     mutationFn: async () => {
+      const mod = draft.module.trim();
+      if (!mod) throw new Error("模块不能为空");
+
+      const existingModules = await api.modules();
+      if (!existingModules.some((m) => m.module === mod)) {
+        await api.createModule(mod);
+      }
+
       const rel = file.endsWith(".json") ? file : `${file}.json`;
-      if (isNew) return api.createScenario(activeModule, rel, draft);
-      return api.updateScenario(activeModule, scenarioFile!, draft);
+      if (isNew) return api.createScenario(mod, rel, draft);
+      return api.updateScenario(mod, scenarioFile!, draft);
     },
     onSuccess: (res) => {
       message.success("已保存");
@@ -108,25 +140,55 @@ export function ScenarioStudioPage() {
       setIsNew(false);
       setScenarioFile(res.file);
       setFile(res.file);
-      qc.invalidateQueries({ queryKey: ["scenarios", projectId, activeModule] });
+      if (draft.module !== activeModule) {
+        setActiveModule(draft.module);
+      }
+      void qc.invalidateQueries({ queryKey: ["modules", projectId] });
+      qc.invalidateQueries({ queryKey: ["scenarios", projectId, draft.module] });
     },
     onError: (e: Error) => message.error(e.message),
   });
 
   const deleteMut = useMutation({
-    mutationFn: () => api.deleteScenario(activeModule, scenarioFile!),
-    onSuccess: () => {
+    mutationFn: (file: string) => api.deleteScenario(activeModule, file),
+    onSuccess: async (_res, deletedFile) => {
       message.success("已删除");
-      setScenarioFile(undefined);
+
+      const listKey = ["scenarios", projectId, activeModule] as const;
+      const prevList = qc.getQueryData<{ file: string }[]>(listKey) ?? [];
+      const nextList = prevList.filter((s) => s.file !== deletedFile);
+      qc.setQueryData(listKey, nextList);
+      qc.removeQueries({ queryKey: ["scenario", projectId, activeModule, deletedFile] });
+
       setIsNew(false);
-      setDraft(emptyScenario(activeModule));
-      setFile("");
       setDirty(false);
-      setSelectedStepIndex(undefined);
       setExpanded(undefined);
       setPreviewMode("draft");
       setJsonPreviewOpen(false);
-      qc.invalidateQueries({ queryKey: ["scenarios", projectId, activeModule] });
+
+      const nextFile = nextList[0]?.file;
+      if (nextFile) {
+        setScenarioFile(nextFile);
+        setFile(nextFile);
+        const cached = qc.getQueryData<Record<string, unknown>>([
+          "scenario", projectId, activeModule, nextFile,
+        ]);
+        if (cached) {
+          const next = rawToDraft(cached, activeModule);
+          setDraft(next);
+          setSelectedStepIndex(next.mode === "extends" || next.steps.length > 0 ? 0 : undefined);
+        } else {
+          setDraft(emptyScenario(activeModule));
+          setSelectedStepIndex(undefined);
+        }
+      } else {
+        setScenarioFile(undefined);
+        setFile("");
+        setDraft(emptyScenario(activeModule));
+        setSelectedStepIndex(undefined);
+      }
+
+      await qc.invalidateQueries({ queryKey: listKey });
     },
     onError: (e: Error) => message.error(e.message),
   });
@@ -179,6 +241,9 @@ export function ScenarioStudioPage() {
     setDraft(imported);
     setFile(suggestedFile);
     setDirty(true);
+    if (imported.module !== activeModule) {
+      setActiveModule(imported.module);
+    }
     setSelectedStepIndex(imported.mode === "extends" || imported.steps.length > 0 ? 0 : undefined);
     setPreviewMode("draft");
   };
@@ -225,7 +290,7 @@ export function ScenarioStudioPage() {
       content: "将永久删除场景 JSON 文件，不可恢复。",
       okText: "删除",
       okButtonProps: { danger: true },
-      onOk: () => deleteMut.mutateAsync(),
+      onOk: () => deleteMut.mutateAsync(scenarioFile),
     });
   };
 
@@ -305,6 +370,7 @@ export function ScenarioStudioPage() {
           canDelete={!!scenarioFile && !isNew}
           onNewScenario={handleNewScenario}
           onImportProfile={() => setImportOpen(true)}
+          onImportScenarioJson={() => setImportJsonOpen(true)}
           onSave={handleSave}
           onValidate={handleValidate}
           onPreviewJson={() => {
@@ -328,7 +394,7 @@ export function ScenarioStudioPage() {
 
         <Content className="studio-main">
           {!hasEditor ? (
-            <div className="studio-empty">请从左侧选择场景，或点击「新建场景」/「导入画像」</div>
+            <div className="studio-empty">请从左侧选择场景，或点击「新建场景」/「导入画像」/「导入场景 JSON」</div>
           ) : (
             <div className="studio-grid">
               <div className="studio-grid__col studio-grid__col--left">
@@ -432,6 +498,13 @@ export function ScenarioStudioPage() {
         open={importOpen}
         module={activeModule}
         onClose={() => setImportOpen(false)}
+        onImported={handleImport}
+      />
+
+      <ImportScenarioJsonModal
+        open={importJsonOpen}
+        module={activeModule}
+        onClose={() => setImportJsonOpen(false)}
         onImported={handleImport}
       />
 
