@@ -13,20 +13,23 @@ if (tools.length === 0) {
   process.exit(1);
 }
 
-function clientConfigDir() {
+function clientStorageRoot() {
   if (process.platform === "darwin") {
-    return join(homedir(), "Library", "Application Support", "visual-e2e-test", "Storage", "config");
+    return join(homedir(), "Library", "Application Support", "visual-e2e-test", "Storage");
   }
   if (process.platform === "win32") {
     const appdata = process.env.APPDATA;
-    if (appdata) return join(appdata, "visual-e2e-test", "Storage", "config");
+    if (appdata) return join(appdata, "visual-e2e-test", "Storage");
   }
-  return join(homedir(), ".local", "share", "visual-e2e-test", "Storage", "config");
+  return join(homedir(), ".local", "share", "visual-e2e-test", "Storage");
 }
+
+const storageRoot = clientStorageRoot();
 
 const sharedRuntimeEnv = {
   E2E_ROOT: process.env.E2E_ROOT ?? REPO_ROOT,
-  CONFIG_DIR: process.env.CONFIG_DIR ?? clientConfigDir(),
+  PROJECTS_DIR: process.env.PROJECTS_DIR ?? join(storageRoot, "projects"),
+  CONFIG_DIR: process.env.CONFIG_DIR ?? join(storageRoot, "config"),
   E2E_RUNTIME: process.env.E2E_RUNTIME ?? "client",
 };
 

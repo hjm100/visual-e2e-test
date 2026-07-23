@@ -24,15 +24,17 @@ npm run tools:dev -- scenario-recorder
 
 ## 流程
 
-1. 填写场景 ID、名称、模块、起始 URL
-2. 点击「启动浏览器」
-3. 在浏览器中完成登录等准备（此阶段不录制）
-4. 点击「开始录制」，执行目标操作
-5. 点击「结束录制」或关闭浏览器，自动导出 JSON
+1. 选择当前项目（嵌入主应用时自动同步）
+2. 「新建场景」填写 ID / 名称 / 模块 / 起始地址（默认回归测试配置与项目 `BASE_URL`）
+3. 在「录制列表」选中场景，或点行内「录制」启动浏览器
+4. 在浏览器中完成登录等准备后点「开始录制」，结束后步骤写回该场景
+5. 可编辑 JSON，并「导入到场景管理」
 
 ## 浏览器环境
 
 工具复用主项目 `browser-runtime.json` 与 `settings.json`，不维护独立 config。需先在主项目设置中安装或配置测试浏览器。
+
+场景草稿保存在 `projects/{projectId}/recordings/`；导入后写入 `projects/{projectId}/scenarios/{module}/{id}.json`。
 
 ## 录制范围
 

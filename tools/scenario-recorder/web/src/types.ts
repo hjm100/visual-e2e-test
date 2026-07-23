@@ -59,3 +59,62 @@ export interface BrowserStatus {
 }
 
 export type RecorderCommand = "start" | "pause" | "resume" | "stop";
+
+export interface ProjectMeta {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+export interface ProjectToolContext {
+  projectId: string;
+  projectName: string;
+  baseUrl: string;
+  scenariosRelPath: string;
+  recordingsRelPath: string;
+  root: string;
+}
+
+export type RecordingStatus = "draft" | "imported";
+
+export interface RecordingSummary {
+  id: string;
+  projectId: string;
+  createdAt: string;
+  updatedAt: string;
+  scenarioId: string;
+  scenarioName: string;
+  module: string;
+  stepCount: number;
+  status: RecordingStatus;
+  importedFile?: string;
+}
+
+export interface Recording {
+  id: string;
+  projectId: string;
+  createdAt: string;
+  updatedAt: string;
+  sessionMeta: ScenarioMeta & { startUrl: string };
+  scenario: ScenarioExport;
+  status: RecordingStatus;
+  importedFile?: string;
+}
+
+export const TOOL_MSG = {
+  CACHE_CLEAR: "vet-tool:cache:clear",
+  CACHE_CLEARED: "vet-tool:cache:cleared",
+  PICK_FOLDER: "vet-tool:bridge:pick-folder",
+  PICK_FOLDER_RESULT: "vet-tool:bridge:pick-folder-result",
+  PROJECT_CONTEXT: "vet-tool:project:context",
+  PROJECT_CONTEXT_REQUEST: "vet-tool:project:context:request",
+  NAVIGATE_SCENARIO: "vet-tool:scenario:navigate",
+} as const;
+
+export interface HostProjectContext {
+  type: typeof TOOL_MSG.PROJECT_CONTEXT;
+  projectId: string;
+  projectName?: string;
+  baseUrl: string;
+  scenariosRelPath: string;
+}

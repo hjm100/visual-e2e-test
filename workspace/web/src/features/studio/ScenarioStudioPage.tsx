@@ -45,6 +45,28 @@ export function ScenarioStudioPage() {
   const [importJsonOpen, setImportJsonOpen] = useState(false);
   const [runJobId, setRunJobId] = useState<string | null>(null);
 
+  useEffect(() => {
+    const module = search.get("module");
+    const scenario = search.get("scenario") ?? undefined;
+    if (module && module !== activeModule) {
+      setActiveModule(module);
+      setIsNew(false);
+    }
+    if (scenario && scenario !== scenarioFile) {
+      setScenarioFile(scenario);
+      setIsNew(false);
+    }
+    if (module || scenario) {
+      void qc.invalidateQueries({ queryKey: ["modules", projectId] });
+      void qc.invalidateQueries({ queryKey: ["scenarios", projectId] });
+      if (module && scenario) {
+        void qc.invalidateQueries({ queryKey: ["scenario", projectId, module, scenario] });
+      }
+    }
+    // Sync from URL when navigating from recorder import
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+
   const macrosQuery = useQuery({ queryKey: ["macros", projectId], queryFn: api.macros, enabled: !!projectId });
   const rulesQuery = useQuery({ queryKey: ["rules", projectId], queryFn: api.rules, enabled: !!projectId });
 

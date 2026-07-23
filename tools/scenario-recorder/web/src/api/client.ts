@@ -1,78 +1,36 @@
-export interface ScenarioMeta {
-  id: string;
-  name: string;
-  module: string;
-  requiresLogin: boolean;
-}
-
-export interface StepDraft {
-  stepId: string;
-  type: string;
-  selector?: string;
-  url?: string;
-  value?: string | number;
-  params?: Record<string, unknown>;
-  desc?: string;
-}
-
-export interface ScenarioExport {
-  id: string;
-  name: string;
-  module: string;
-  enabled: boolean;
-  setup: {
-    requiresLogin: boolean;
-    entryRoute: string;
-  };
-  steps: StepDraft[];
-}
-
-export type RecorderStatus =
-  | "starting"
-  | "preparing"
-  | "recording"
-  | "paused"
-  | "stopping"
-  | "stopped"
-  | "cancelled"
-  | "error";
-
-export interface RecorderSession {
-  sessionId: string;
-  status: RecorderStatus;
-  startUrl: string;
-  currentUrl: string;
-  meta: ScenarioMeta;
-  steps: StepDraft[];
-  scenario?: ScenarioExport;
-  error?: string;
-  startedAt: string;
-  updatedAt: string;
-  revision: number;
-}
-
-export type RecorderCommand = "start" | "pause" | "resume" | "stop";
-
-export interface BrowserStatus {
-  ok: boolean;
-  path: string;
-  version: string;
-  hints: string[];
-}
+import type {
+  BrowserStatus,
+  ProjectMeta,
+  ProjectToolContext,
+  Recording,
+  RecordingSummary,
+  RecorderCommand,
+  RecorderSession,
+  ScenarioExport,
+  ScenarioMeta,
+} from "../types";
 
 const API = "";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${path}`, init);
   if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? `请求失败: ${res.status}`);
+    const body = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
+    const err = new Error(body.error ?? `请求失败: ${res.status}`) as Error & { code?: string; status?: number };
+    err.code = body.code;
+    err.status = res.status;
+    throw err;
   }
   return res.json() as Promise<T>;
 }
 
 export const api = {
   browserStatus: () => request<BrowserStatus>("/api/browser/status"),
+
+  projects: () => request<{ projects: ProjectMeta[] }>("/api/projects"),
+
+  projectContext: (projectId: string) =>
+    request<ProjectToolContext>(`/api/projects/${encodeURIComponent(projectId)}/context`),
 
   createSession: (body: { startUrl: string; meta: ScenarioMeta }) =>
     request<RecorderSession>("/api/sessions", {
@@ -92,4 +50,64 @@ export const api = {
 
   cancel: (sessionId: string) =>
     request<{ ok: boolean }>(`/api/sessions/${sessionId}`, { method: "DELETE" }),
+
+  listRecordings: (projectId: string) =>
+    request<{ recordings: RecordingSummary[] }>(
+      `/api/recordings?projectId=${encodeURIComponent(projectId)}`,
+    ),
+
+  getRecording: (projectId: string, id: string) =>
+    request<Recording>(
+      `/api/recordings/${encodeURIComponent(id)}?projectId=${encodeURIComponent(projectId)}`,
+    ),
+
+  createRecording: (body: {
+    projectId: string;
+    sessionMeta: ScenarioMeta & { startUrl: string };
+    scenario: ScenarioExport;
+    allowEmptySteps?: boolean;
+  }) =>
+    request<Recording>("/api/recordings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+
+  updateRecording: (
+    id: string,
+    body: {
+      projectId: string;
+      scenario?: ScenarioExport;
+      sessionMeta?: ScenarioMeta & { startUrl: string };
+      status?: "draft" | "imported";
+      clearImported?: boolean;
+      allowEmptySteps?: boolean;
+    },
+  ) =>
+    request<Recording>(`/api/recordings/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+
+  deleteRecording: (projectId: string, id: string) =>
+    request<{ ok: boolean }>(
+      `/api/recordings/${encodeURIComponent(id)}?projectId=${encodeURIComponent(projectId)}`,
+      { method: "DELETE" },
+    ),
+
+  scenarioExists: (projectId: string, module: string, file: string) =>
+    request<{ exists: boolean }>(
+      `/api/scenarios/exists?projectId=${encodeURIComponent(projectId)}&module=${encodeURIComponent(module)}&file=${encodeURIComponent(file)}`,
+    ),
+
+  importRecording: (id: string, body: { projectId: string; overwrite?: boolean }) =>
+    request<{ recording: Recording; file: string; overwritten: boolean }>(
+      `/api/recordings/${encodeURIComponent(id)}/import`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    ),
 };

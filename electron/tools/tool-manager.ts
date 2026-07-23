@@ -58,6 +58,7 @@ function buildToolEnv(isDev: boolean, appRoot: string): NodeJS.ProcessEnv {
   return {
     ...process.env,
     E2E_ROOT: process.env.E2E_ROOT?.trim() || appRoot,
+    PROJECTS_DIR: process.env.PROJECTS_DIR?.trim() || layout.projectsDir,
     CONFIG_DIR: process.env.CONFIG_DIR?.trim() || layout.configDir,
     E2E_RUNTIME: process.env.E2E_RUNTIME?.trim() || "client",
   };
