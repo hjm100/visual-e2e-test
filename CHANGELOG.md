@@ -6,6 +6,15 @@ All notable changes to this project will be documented in this file.
 
 ## [1.4.0](https://github.com/visual-e2e/visual-e2e-test/compare/v1.3.0...v1.4.0) (2026-07-21)
 
+### Features
+
+- 新增场景录制工具 `scenario-recorder`
+  - 录制点击、输入、页面跳转、常用快捷键，并自动插入等待步骤
+  - 结束录制后导出场景 JSON，可复制或下载到 `scenarios/` 使用
+  - 密码字段与敏感 URL 参数自动脱敏
+- 场景 Studio 支持「导入场景 JSON」
+  - 校验 JSON 结构与步骤内容，保留 JSON 内模块名；保存时自动创建缺失模块
+
 ## [1.3.0](https://github.com/visual-e2e/visual-e2e-test/compare/v1.2.0...v1.3.0) (2026-07-21)
 
 ### Features

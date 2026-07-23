@@ -10,6 +10,7 @@ interface StudioHeaderProps {
   canDelete: boolean;
   onNewScenario: () => void;
   onImportProfile: () => void;
+  onImportScenarioJson: () => void;
   onSave: () => void;
   onValidate: () => void;
   onPreviewJson: () => void;
@@ -19,7 +20,7 @@ interface StudioHeaderProps {
 }
 
 export function StudioHeader({
-  dirty, saving, canDelete, onNewScenario, onImportProfile, onSave, onValidate,
+  dirty, saving, canDelete, onNewScenario, onImportProfile, onImportScenarioJson, onSave, onValidate,
   onPreviewJson, onDelete, onRunCurrent, onRunModule,
 }: StudioHeaderProps) {
   const runItems: MenuProps["items"] = [
@@ -35,6 +36,9 @@ export function StudioHeader({
         </Button>
         <Button icon={<ImportOutlined />} onClick={onImportProfile}>
           导入画像
+        </Button>
+        <Button icon={<ImportOutlined />} onClick={onImportScenarioJson}>
+          导入场景 JSON
         </Button>
       </div>
       <div className="studio-header__right">

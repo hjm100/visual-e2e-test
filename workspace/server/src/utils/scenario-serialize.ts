@@ -59,7 +59,7 @@ function compactStep(step: Record<string, unknown>): Record<string, unknown> {
 function compactSetup(setup: ScenarioWrite["setup"]): Record<string, unknown> | undefined {
   if (!setup) return undefined;
   const out: Record<string, unknown> = {};
-  if (setup.requiresLogin === false) out.requiresLogin = false;
+  out.requiresLogin = setup.requiresLogin !== false;
   if (!isBlank(setup.entryRoute) && setup.entryRoute !== "/") out.entryRoute = setup.entryRoute;
   if (setup.refresh) out.refresh = true;
   if (setup.readySelectors?.length) out.readySelectors = setup.readySelectors;

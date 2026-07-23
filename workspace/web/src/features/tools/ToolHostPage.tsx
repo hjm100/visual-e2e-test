@@ -121,7 +121,7 @@ function BuiltinHostFrame({ tool, iframeSrc, apiOrigin }: BuiltinHostFrameProps)
         className="tool-host__iframe"
         src={iframeSrc}
         title={tool.name}
-        sandbox="allow-scripts allow-forms allow-popups allow-same-origin"
+        sandbox="allow-scripts allow-forms allow-popups allow-same-origin allow-downloads"
         referrerPolicy="no-referrer"
         style={{ opacity: iframeLoaded ? 1 : 0 }}
         onLoad={() => setIframeLoaded(true)}
@@ -147,7 +147,7 @@ function CustomHostFrame({ tool }: { tool: CustomTool }) {
         className="tool-host__iframe"
         src={tool.url}
         title={tool.name}
-        sandbox="allow-scripts allow-forms allow-popups allow-same-origin"
+        sandbox="allow-scripts allow-forms allow-popups allow-same-origin allow-downloads"
         referrerPolicy="no-referrer"
         style={{ opacity: iframeLoaded ? 1 : 0 }}
         onLoad={() => setIframeLoaded(true)}

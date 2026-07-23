@@ -17,6 +17,7 @@ import { ExtendsStepsPanel } from "./components/ExtendsStepsPanel";
 import { StudioHeader } from "./components/StudioHeader";
 import { StudioSection } from "./components/StudioSection";
 import { ImportProfileModal } from "./components/ImportProfileModal";
+import { ImportScenarioJsonModal } from "./components/ImportScenarioJsonModal";
 import { JsonPreviewDrawer, type JsonPreviewMode } from "../../components/JsonPreviewDrawer";
 import { RunDetailDrawer } from "../runs/RunDetailDrawer";
 import { seedRunCache } from "../runs/seed-run-cache";
@@ -41,6 +42,7 @@ export function ScenarioStudioPage() {
   const [previewMode, setPreviewMode] = useState<JsonPreviewMode>("draft");
   const [issues, setIssues] = useState<{ level: string; message: string }[]>([]);
   const [importOpen, setImportOpen] = useState(false);
+  const [importJsonOpen, setImportJsonOpen] = useState(false);
   const [runJobId, setRunJobId] = useState<string | null>(null);
 
   const macrosQuery = useQuery({ queryKey: ["macros", projectId], queryFn: api.macros, enabled: !!projectId });
@@ -98,9 +100,17 @@ export function ScenarioStudioPage() {
 
   const saveScenarioMut = useMutation({
     mutationFn: async () => {
+      const mod = draft.module.trim();
+      if (!mod) throw new Error("模块不能为空");
+
+      const existingModules = await api.modules();
+      if (!existingModules.some((m) => m.module === mod)) {
+        await api.createModule(mod);
+      }
+
       const rel = file.endsWith(".json") ? file : `${file}.json`;
-      if (isNew) return api.createScenario(activeModule, rel, draft);
-      return api.updateScenario(activeModule, scenarioFile!, draft);
+      if (isNew) return api.createScenario(mod, rel, draft);
+      return api.updateScenario(mod, scenarioFile!, draft);
     },
     onSuccess: (res) => {
       message.success("已保存");
@@ -108,7 +118,11 @@ export function ScenarioStudioPage() {
       setIsNew(false);
       setScenarioFile(res.file);
       setFile(res.file);
-      qc.invalidateQueries({ queryKey: ["scenarios", projectId, activeModule] });
+      if (draft.module !== activeModule) {
+        setActiveModule(draft.module);
+      }
+      void qc.invalidateQueries({ queryKey: ["modules", projectId] });
+      qc.invalidateQueries({ queryKey: ["scenarios", projectId, draft.module] });
     },
     onError: (e: Error) => message.error(e.message),
   });
@@ -179,6 +193,9 @@ export function ScenarioStudioPage() {
     setDraft(imported);
     setFile(suggestedFile);
     setDirty(true);
+    if (imported.module !== activeModule) {
+      setActiveModule(imported.module);
+    }
     setSelectedStepIndex(imported.mode === "extends" || imported.steps.length > 0 ? 0 : undefined);
     setPreviewMode("draft");
   };
@@ -305,6 +322,7 @@ export function ScenarioStudioPage() {
           canDelete={!!scenarioFile && !isNew}
           onNewScenario={handleNewScenario}
           onImportProfile={() => setImportOpen(true)}
+          onImportScenarioJson={() => setImportJsonOpen(true)}
           onSave={handleSave}
           onValidate={handleValidate}
           onPreviewJson={() => {
@@ -328,7 +346,7 @@ export function ScenarioStudioPage() {
 
         <Content className="studio-main">
           {!hasEditor ? (
-            <div className="studio-empty">请从左侧选择场景，或点击「新建场景」/「导入画像」</div>
+            <div className="studio-empty">请从左侧选择场景，或点击「新建场景」/「导入画像」/「导入场景 JSON」</div>
           ) : (
             <div className="studio-grid">
               <div className="studio-grid__col studio-grid__col--left">
@@ -432,6 +450,13 @@ export function ScenarioStudioPage() {
         open={importOpen}
         module={activeModule}
         onClose={() => setImportOpen(false)}
+        onImported={handleImport}
+      />
+
+      <ImportScenarioJsonModal
+        open={importJsonOpen}
+        module={activeModule}
+        onClose={() => setImportJsonOpen(false)}
         onImported={handleImport}
       />
 
