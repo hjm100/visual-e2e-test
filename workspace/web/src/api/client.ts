@@ -230,6 +230,16 @@ export const api = {
     request<{ ok: boolean }>(`/api/tools/${encodeURIComponent(toolId)}`, {
       method: "DELETE",
     }),
+  fetchToolPackage: (url: string, filename?: string) =>
+    request<{ ok: boolean; path: string; filename: string; size: number }>(
+      "/api/tools/fetch-package",
+      { method: "POST", body: JSON.stringify({ url, filename }) },
+    ),
+  toolPackageDownloadUrl: (url: string, filename?: string) => {
+    const params = new URLSearchParams({ url });
+    if (filename) params.set("filename", filename);
+    return `${API_BASE}/api/tools/download-package?${params.toString()}`;
+  },
 };
 
 function draftPayload(draft: ScenarioDraft): Record<string, unknown> {

@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { discoverToolsWithPorts, getToolById } from "./scanner.js";
 import { installToolFromZip, inspectToolZip, uninstallTool } from "./installer.js";
 import { ensureToolsDir } from "./paths.js";
+import { downloadUrlToBuffer, downloadUrlToTempFile } from "./download.js";
 
 export function registerToolsRoutes(
   app: FastifyInstance,
@@ -67,6 +68,42 @@ export function registerToolsRoutes(
       })),
     };
   });
+
+  /** Download remote .vettool.zip to a temp path for inspect/install. */
+  app.post<{ Body: { url?: string; filename?: string } }>(
+    "/api/tools/fetch-package",
+    async (req, reply) => {
+      const url = req.body?.url?.trim();
+      if (!url) return reply.status(400).send({ error: "url 不能为空" });
+      try {
+        const result = await downloadUrlToTempFile(url, req.body?.filename);
+        return { ok: true, ...result };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "下载失败";
+        return reply.status(400).send({ error: message });
+      }
+    },
+  );
+
+  /** Proxy package download with Content-Disposition (same-window save). */
+  app.get<{ Querystring: { url?: string; filename?: string } }>(
+    "/api/tools/download-package",
+    async (req, reply) => {
+      const url = req.query.url?.trim();
+      if (!url) return reply.status(400).send({ error: "url 不能为空" });
+      try {
+        const { buffer, filename: fetched } = await downloadUrlToBuffer(url);
+        const filename = (req.query.filename?.trim() || fetched).replace(/[^\w.\-]+/g, "_");
+        reply.header("Content-Type", "application/zip");
+        reply.header("Content-Disposition", `attachment; filename="${filename}"`);
+        reply.header("Content-Length", String(buffer.length));
+        return reply.send(buffer);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "下载失败";
+        return reply.status(400).send({ error: message });
+      }
+    },
+  );
 
   app.get<{ Params: { toolId: string } }>("/api/tools/:toolId", async (req, reply) => {
     const tools = await discoverToolsWithPorts(toolsDir, e2eRoot);

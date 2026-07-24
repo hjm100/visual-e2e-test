@@ -15,6 +15,7 @@ import {
   Radio,
   Tag,
   Space,
+  Alert,
 } from "antd";
 import type { MenuProps } from "antd";
 import {
@@ -27,10 +28,19 @@ import {
   DeleteOutlined,
   UploadOutlined,
   CloudUploadOutlined,
+  DownloadOutlined,
+  CloudDownloadOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons";
 import { api } from "../../api/client";
 import { ScrollPane } from "../../components/layout/ScrollPane";
 import type { ToolRegistryEntry } from "./types";
+import {
+  compareToolVersions,
+  normalizeToolVersion,
+  type ToolCatalogEntry,
+} from "./catalog";
+import { useToolsCatalog } from "./useToolsCatalog";
 import {
   createCustomTool,
   deleteCustomTool,
@@ -88,6 +98,18 @@ function sourceLabel(source?: ToolRegistryEntry["source"]): string | null {
   return null;
 }
 
+type StoreStatus = "available" | "installed" | "updatable" | "unavailable";
+
+function storeStatus(
+  entry: ToolCatalogEntry,
+  installed?: ToolRegistryEntry,
+): StoreStatus {
+  if (!entry.package?.url || !entry.version) return "unavailable";
+  if (!installed) return "available";
+  if (compareToolVersions(entry.version, installed.version) > 0) return "updatable";
+  return "installed";
+}
+
 interface ToolCardProps {
   title: React.ReactNode;
   description?: string;
@@ -139,14 +161,18 @@ export function ToolsHubPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<CustomTool | null>(null);
   const [installing, setInstalling] = useState(false);
+  const [storeOpen, setStoreOpen] = useState(false);
+  const [storeInstallingId, setStoreInstallingId] = useState<string | null>(null);
   const [form] = Form.useForm<ToolFormValues>();
 
   const registryQuery = useQuery({
     queryKey: ["tools-registry"],
     queryFn: api.listTools,
   });
+  const catalogQuery = useToolsCatalog();
 
   const platformTools = registryQuery.data?.tools ?? [];
+  const catalogTools = catalogQuery.data?.tools ?? [];
 
   const openCreateModal = () => {
     setEditing(null);
@@ -205,6 +231,67 @@ export function ToolsHubPage() {
     });
   };
 
+  const installFromPath = async (path: string, options?: { expectToolId?: string }) => {
+    const info = await api.inspectTool(path);
+    if (options?.expectToolId && info.id !== options.expectToolId) {
+      message.error(
+        `安装包工具 id 为「${info.id}」，与当前工具「${options.expectToolId}」不一致`,
+      );
+      return;
+    }
+
+    const installed = platformTools.find((t) => t.id === info.id && t.source === "user");
+    let force = false;
+
+    if (installed || info.alreadyInstalled) {
+      const localVer = installed?.version ?? info.installedVersion ?? "?";
+      const sameVersion = localVer === info.version;
+      const ok = await new Promise<boolean>((resolve) => {
+        Modal.confirm({
+          title: sameVersion ? "覆盖安装" : "更新工具",
+          content: sameVersion
+            ? `「${info.name}」v${localVer} 已安装，版本相同。是否停止服务并覆盖安装？`
+            : `将「${info.name}」从 v${localVer} 更新到 v${info.version}。将先停止服务再安装，是否继续？`,
+          okText: sameVersion ? "覆盖" : "更新",
+          cancelText: "取消",
+          onOk: () => resolve(true),
+          onCancel: () => resolve(false),
+        });
+      });
+      if (!ok) return;
+      force = true;
+
+      if (window.electronAPI?.stopTool) {
+        await window.electronAPI.stopTool(info.id);
+      }
+    }
+
+    const result = await api.installTool(path, { force });
+    await queryClient.invalidateQueries({ queryKey: ["tools-registry"] });
+
+    try {
+      const ensure = window.electronAPI?.ensureTool ?? window.electronAPI?.ensureBuiltinTool;
+      if (ensure) await ensure(result.tool.id);
+    } catch (err) {
+      message.warning(
+        err instanceof Error
+          ? `已安装，但自动启动失败: ${err.message}`
+          : "已安装，但自动启动失败",
+      );
+      return;
+    }
+
+    if (result.tool.replaced) {
+      message.success(
+        result.tool.previousVersion && result.tool.previousVersion !== result.tool.version
+          ? `已更新 ${result.tool.name} v${result.tool.previousVersion} → v${result.tool.version}`
+          : `已覆盖安装 ${result.tool.name} v${result.tool.version}`,
+      );
+    } else {
+      message.success(`已安装 ${result.tool.name} v${result.tool.version}`);
+    }
+  };
+
   const handleInstall = async (options?: { expectToolId?: string }) => {
     if (!window.electronAPI?.pickToolPackage) {
       message.warning("请在桌面客户端中安装工具包");
@@ -214,70 +301,55 @@ export function ToolsHubPage() {
     try {
       const path = await window.electronAPI.pickToolPackage();
       if (!path) return;
-
-      const info = await api.inspectTool(path);
-      if (options?.expectToolId && info.id !== options.expectToolId) {
-        message.error(
-          `安装包工具 id 为「${info.id}」，与当前工具「${options.expectToolId}」不一致`,
-        );
-        return;
-      }
-
-      const installed = platformTools.find((t) => t.id === info.id && t.source === "user");
-      let force = false;
-
-      if (installed || info.alreadyInstalled) {
-        const localVer = installed?.version ?? info.installedVersion ?? "?";
-        const sameVersion = localVer === info.version;
-        const ok = await new Promise<boolean>((resolve) => {
-          Modal.confirm({
-            title: sameVersion ? "覆盖安装" : "更新工具",
-            content: sameVersion
-              ? `「${info.name}」v${localVer} 已安装，版本相同。是否停止服务并覆盖安装？`
-              : `将「${info.name}」从 v${localVer} 更新到 v${info.version}。将先停止服务再安装，是否继续？`,
-            okText: sameVersion ? "覆盖" : "更新",
-            cancelText: "取消",
-            onOk: () => resolve(true),
-            onCancel: () => resolve(false),
-          });
-        });
-        if (!ok) return;
-        force = true;
-
-        if (window.electronAPI?.stopTool) {
-          await window.electronAPI.stopTool(info.id);
-        }
-      }
-
-      const result = await api.installTool(path, { force });
-      await queryClient.invalidateQueries({ queryKey: ["tools-registry"] });
-
-      try {
-        const ensure = window.electronAPI?.ensureTool ?? window.electronAPI?.ensureBuiltinTool;
-        if (ensure) await ensure(result.tool.id);
-      } catch (err) {
-        message.warning(
-          err instanceof Error
-            ? `已安装，但自动启动失败: ${err.message}`
-            : "已安装，但自动启动失败",
-        );
-        return;
-      }
-
-      if (result.tool.replaced) {
-        message.success(
-          result.tool.previousVersion && result.tool.previousVersion !== result.tool.version
-            ? `已更新 ${result.tool.name} v${result.tool.previousVersion} → v${result.tool.version}`
-            : `已覆盖安装 ${result.tool.name} v${result.tool.version}`,
-        );
-      } else {
-        message.success(`已安装 ${result.tool.name} v${result.tool.version}`);
-      }
+      await installFromPath(path, options);
     } catch (err) {
       message.error(err instanceof Error ? err.message : "安装失败");
     } finally {
       setInstalling(false);
     }
+  };
+
+  const handleStoreInstall = async (entry: ToolCatalogEntry) => {
+    if (!entry.package?.url) {
+      message.warning("该工具暂无安装包");
+      return;
+    }
+    setStoreInstallingId(entry.id);
+    try {
+      let path: string;
+      if (window.electronAPI?.downloadToolPackage) {
+        path = await window.electronAPI.downloadToolPackage(
+          entry.package.url,
+          entry.package.filename,
+        );
+      } else {
+        const fetched = await api.fetchToolPackage(
+          entry.package.url,
+          entry.package.filename,
+        );
+        path = fetched.path;
+      }
+      await installFromPath(path, { expectToolId: entry.id });
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : "安装失败");
+    } finally {
+      setStoreInstallingId(null);
+    }
+  };
+
+  const handleStoreDownload = (entry: ToolCatalogEntry) => {
+    if (!entry.package?.url) {
+      message.warning("该工具暂无安装包");
+      return;
+    }
+    const href = api.toolPackageDownloadUrl(entry.package.url, entry.package.filename);
+    const a = document.createElement("a");
+    a.href = href;
+    a.download = entry.package.filename || "tool.vettool.zip";
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   };
 
   const handleUninstall = (tool: ToolRegistryEntry) => {
@@ -377,8 +449,14 @@ export function ToolsHubPage() {
           </Typography.Paragraph>
         </div>
         <Space>
-          <Button icon={<UploadOutlined />} loading={installing} onClick={() => void handleInstall()}>
-            安装工具包
+          <Button
+            icon={<CloudDownloadOutlined />}
+            onClick={() => {
+              setStoreOpen(true);
+              void catalogQuery.refetch();
+            }}
+          >
+            打开应用市场
           </Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
             添加外链
@@ -457,6 +535,131 @@ export function ToolsHubPage() {
           </div>
         )}
       </section>
+
+      <Modal
+        title="应用市场"
+        open={storeOpen}
+        onCancel={() => setStoreOpen(false)}
+        footer={null}
+        width="90%"
+        style={{ maxWidth: 1200 }}
+        centered
+        destroyOnHidden
+        className="tools-hub__store-modal"
+      >
+        <div className="tools-hub__store-modal-toolbar">
+          <Typography.Paragraph type="secondary" style={{ marginBottom: 0, flex: 1 }}>
+            可一键安装，或下载安装包后使用「安装工具」本地安装。
+            {catalogQuery.data?.updatedAt
+              ? ` 目录更新于 ${new Date(catalogQuery.data.updatedAt).toLocaleString("zh-CN")}。`
+              : ""}
+          </Typography.Paragraph>
+          <Space>
+            <Button
+              icon={<ReloadOutlined />}
+              loading={catalogQuery.isFetching}
+              onClick={() => void catalogQuery.refetch()}
+            >
+              刷新
+            </Button>
+            <Button
+              icon={<UploadOutlined />}
+              loading={installing}
+              onClick={() => void handleInstall()}
+            >
+              安装工具
+            </Button>
+          </Space>
+        </div>
+
+        {catalogQuery.isError ? (
+          <Alert
+            type="warning"
+            showIcon
+            message="无法加载应用市场目录"
+            description={
+              catalogQuery.error instanceof Error
+                ? catalogQuery.error.message
+                : "请检查网络后刷新"
+            }
+            style={{ marginBottom: 16 }}
+          />
+        ) : null}
+
+        {catalogQuery.isLoading ? (
+          <div className="tools-hub__store-modal-loading">
+            <Spin />
+          </div>
+        ) : catalogTools.length === 0 && !catalogQuery.isError ? (
+          <Empty description="暂无已发布工具" />
+        ) : (
+          <div className="tools-hub__grid tools-hub__grid--store">
+            {catalogTools.map((entry) => {
+              const installed = platformTools.find((t) => t.id === entry.id);
+              const status = storeStatus(entry, installed);
+              const remoteVer = normalizeToolVersion(entry.version);
+              const localVer = normalizeToolVersion(installed?.version);
+              const busy = storeInstallingId === entry.id;
+
+              return (
+                <Card
+                  key={entry.id}
+                  className="tools-hub__card tools-hub__card--store"
+                  size="small"
+                  title={
+                    <div className="tools-hub__card-title">
+                      <BuiltinIcon icon={entry.icon} />
+                      <span className="tools-hub__card-title-text">{entry.name}</span>
+                    </div>
+                  }
+                >
+                  <div className="tools-hub__meta">
+                    <Tag>{remoteVer ? `v${remoteVer}` : "未发布"}</Tag>
+                    {status === "installed" && <Tag color="success">已安装</Tag>}
+                    {status === "updatable" && <Tag color="processing">可更新</Tag>}
+                    {status === "available" && <Tag color="blue">可安装</Tag>}
+                    {status === "unavailable" && <Tag>暂无包</Tag>}
+                    {status === "updatable" && localVer ? <Tag>本地 v{localVer}</Tag> : null}
+                  </div>
+                  <Typography.Paragraph type="secondary" ellipsis={{ rows: 2 }}>
+                    {entry.description || "—"}
+                  </Typography.Paragraph>
+                  <div className="tools-hub__store-actions">
+                    {status === "available" || status === "updatable" ? (
+                      <Button
+                        type="primary"
+                        size="small"
+                        icon={
+                          status === "updatable" ? <CloudDownloadOutlined /> : <DownloadOutlined />
+                        }
+                        loading={busy}
+                        disabled={busy}
+                        onClick={() => void handleStoreInstall(entry)}
+                      >
+                        {status === "updatable" ? "一键更新" : "一键安装"}
+                      </Button>
+                    ) : null}
+                    {entry.package?.url ? (
+                      <Button size="small" onClick={() => handleStoreDownload(entry)}>
+                        下载包
+                      </Button>
+                    ) : null}
+                    <Button
+                      size="small"
+                      type="link"
+                      href={entry.releaseUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Release
+                    </Button>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </Modal>
 
       <Modal
         title={editing ? "编辑外链" : "添加外链"}

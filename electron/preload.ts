@@ -8,6 +8,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   pickFolder: () => ipcRenderer.invoke("pick-folder") as Promise<string | null>,
   pickExecutable: () => ipcRenderer.invoke("pick-executable") as Promise<string | null>,
   pickToolPackage: () => ipcRenderer.invoke("pick-tool-package") as Promise<string | null>,
+  downloadToolPackage: (url: string, filename?: string) =>
+    ipcRenderer.invoke("download-tool-package", url, filename) as Promise<string>,
   showItemInFolder: (path: string) =>
     ipcRenderer.invoke("show-item-in-folder", path) as Promise<void>,
   openExternalTool: (url: string, title?: string) =>
