@@ -26,6 +26,7 @@ import {
   EditOutlined,
   DeleteOutlined,
   UploadOutlined,
+  CloudUploadOutlined,
 } from "@ant-design/icons";
 import { api } from "../../api/client";
 import { ScrollPane } from "../../components/layout/ScrollPane";
@@ -204,7 +205,7 @@ export function ToolsHubPage() {
     });
   };
 
-  const handleInstall = async () => {
+  const handleInstall = async (options?: { expectToolId?: string }) => {
     if (!window.electronAPI?.pickToolPackage) {
       message.warning("请在桌面客户端中安装工具包");
       return;
@@ -213,9 +214,65 @@ export function ToolsHubPage() {
     try {
       const path = await window.electronAPI.pickToolPackage();
       if (!path) return;
-      const result = await api.installTool(path);
+
+      const info = await api.inspectTool(path);
+      if (options?.expectToolId && info.id !== options.expectToolId) {
+        message.error(
+          `安装包工具 id 为「${info.id}」，与当前工具「${options.expectToolId}」不一致`,
+        );
+        return;
+      }
+
+      const installed = platformTools.find((t) => t.id === info.id && t.source === "user");
+      let force = false;
+
+      if (installed || info.alreadyInstalled) {
+        const localVer = installed?.version ?? info.installedVersion ?? "?";
+        const sameVersion = localVer === info.version;
+        const ok = await new Promise<boolean>((resolve) => {
+          Modal.confirm({
+            title: sameVersion ? "覆盖安装" : "更新工具",
+            content: sameVersion
+              ? `「${info.name}」v${localVer} 已安装，版本相同。是否停止服务并覆盖安装？`
+              : `将「${info.name}」从 v${localVer} 更新到 v${info.version}。将先停止服务再安装，是否继续？`,
+            okText: sameVersion ? "覆盖" : "更新",
+            cancelText: "取消",
+            onOk: () => resolve(true),
+            onCancel: () => resolve(false),
+          });
+        });
+        if (!ok) return;
+        force = true;
+
+        if (window.electronAPI?.stopTool) {
+          await window.electronAPI.stopTool(info.id);
+        }
+      }
+
+      const result = await api.installTool(path, { force });
       await queryClient.invalidateQueries({ queryKey: ["tools-registry"] });
-      message.success(`已安装 ${result.tool.name} v${result.tool.version}`);
+
+      try {
+        const ensure = window.electronAPI?.ensureTool ?? window.electronAPI?.ensureBuiltinTool;
+        if (ensure) await ensure(result.tool.id);
+      } catch (err) {
+        message.warning(
+          err instanceof Error
+            ? `已安装，但自动启动失败: ${err.message}`
+            : "已安装，但自动启动失败",
+        );
+        return;
+      }
+
+      if (result.tool.replaced) {
+        message.success(
+          result.tool.previousVersion && result.tool.previousVersion !== result.tool.version
+            ? `已更新 ${result.tool.name} v${result.tool.previousVersion} → v${result.tool.version}`
+            : `已覆盖安装 ${result.tool.name} v${result.tool.version}`,
+        );
+      } else {
+        message.success(`已安装 ${result.tool.name} v${result.tool.version}`);
+      }
     } catch (err) {
       message.error(err instanceof Error ? err.message : "安装失败");
     } finally {
@@ -270,6 +327,15 @@ export function ToolsHubPage() {
   const platformMenu = (tool: ToolRegistryEntry): MenuProps["items"] | undefined => {
     if (!tool.uninstallable) return undefined;
     return [
+      {
+        key: "update",
+        icon: <CloudUploadOutlined />,
+        label: "更新…",
+        onClick: ({ domEvent }) => {
+          domEvent.stopPropagation();
+          void handleInstall({ expectToolId: tool.id });
+        },
+      },
       {
         key: "uninstall",
         icon: <DeleteOutlined />,

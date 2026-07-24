@@ -349,6 +349,24 @@ export function stopTool(toolId: string): void {
   running.delete(toolId);
 }
 
+/** Stop tool process and wait until its port is free (or timeout). */
+export async function stopToolAndWait(toolId: string, timeoutMs = 8_000): Promise<void> {
+  const entry = running.get(toolId);
+  const port = entry?.port;
+  stopTool(toolId);
+  if (port == null) return;
+
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    if (!(await isHealthy(port))) {
+      // give OS a beat to release the bind
+      await new Promise((r) => setTimeout(r, 150));
+      if (!(await isHealthy(port))) return;
+    }
+    await new Promise((r) => setTimeout(r, 200));
+  }
+}
+
 export function stopAllTools(): void {
   for (const { child } of running.values()) {
     if (!child.killed) child.kill();

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { existsSync } from "node:fs";
 import { discoverToolsWithPorts, getToolById } from "./scanner.js";
-import { installToolFromZip, uninstallTool } from "./installer.js";
+import { installToolFromZip, inspectToolZip, uninstallTool } from "./installer.js";
 import { ensureToolsDir } from "./paths.js";
 
 export function registerToolsRoutes(
@@ -75,12 +75,26 @@ export function registerToolsRoutes(
     return tool;
   });
 
-  app.post<{ Body: { path?: string } }>("/api/tools/install", async (req, reply) => {
+  app.post<{ Body: { path?: string } }>("/api/tools/inspect", async (req, reply) => {
     const zipPath = req.body?.path?.trim();
     if (!zipPath) return reply.status(400).send({ error: "path 不能为空" });
     if (!existsSync(zipPath)) return reply.status(400).send({ error: "文件不存在" });
     try {
-      const result = await installToolFromZip(toolsDir, zipPath);
+      return inspectToolZip(toolsDir, zipPath);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "读取安装包失败";
+      return reply.status(400).send({ error: message });
+    }
+  });
+
+  app.post<{ Body: { path?: string; force?: boolean } }>("/api/tools/install", async (req, reply) => {
+    const zipPath = req.body?.path?.trim();
+    if (!zipPath) return reply.status(400).send({ error: "path 不能为空" });
+    if (!existsSync(zipPath)) return reply.status(400).send({ error: "文件不存在" });
+    try {
+      const result = await installToolFromZip(toolsDir, zipPath, {
+        force: Boolean(req.body?.force),
+      });
       return { ok: true, tool: result };
     } catch (err) {
       const message = err instanceof Error ? err.message : "安装失败";

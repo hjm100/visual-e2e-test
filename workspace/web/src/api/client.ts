@@ -202,11 +202,30 @@ export const api = {
     request<import("../features/tools/types").ToolRegistryResponse>("/api/tools"),
   listTools: () =>
     request<import("../features/tools/types").ToolRegistryResponse>("/api/tools"),
-  installTool: (path: string) =>
-    request<{ ok: boolean; tool: { id: string; version: string; name: string } }>(
-      "/api/tools/install",
-      { method: "POST", body: JSON.stringify({ path }) },
-    ),
+  installTool: (path: string, options?: { force?: boolean }) =>
+    request<{
+      ok: boolean;
+      tool: {
+        id: string;
+        version: string;
+        name: string;
+        previousVersion?: string;
+        replaced: boolean;
+      };
+    }>("/api/tools/install", {
+      method: "POST",
+      body: JSON.stringify({ path, force: Boolean(options?.force) }),
+    }),
+  inspectTool: (path: string) =>
+    request<{
+      id: string;
+      version: string;
+      name: string;
+      description: string;
+      preferredProd?: number;
+      installedVersion?: string;
+      alreadyInstalled: boolean;
+    }>("/api/tools/inspect", { method: "POST", body: JSON.stringify({ path }) }),
   uninstallTool: (toolId: string) =>
     request<{ ok: boolean }>(`/api/tools/${encodeURIComponent(toolId)}`, {
       method: "DELETE",

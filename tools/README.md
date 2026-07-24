@@ -17,6 +17,8 @@
 
 依赖 Playwright 的工具（如场景录制、健康扫描）打包时不内嵌 `playwright`；启动时 Host 会把主应用 `node_modules` 中的 `playwright` / `playwright-core` 软链到工具目录，供 ESM 解析（仅设 `NODE_PATH` 不够）。
 
+已安装工具可通过卡片菜单「更新…」选择本地 `.vettool.zip`：同版本覆盖或异版本升级时，会先停止服务再安装并自动启动。
+
 ## 独立工具仓库
 
 | 工具 | 仓库 |

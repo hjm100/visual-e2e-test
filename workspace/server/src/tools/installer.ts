@@ -71,14 +71,84 @@ function assertPackageLayout(root: string): void {
   }
 }
 
+export interface ToolPackageInfo {
+  id: string;
+  version: string;
+  name: string;
+  description: string;
+  preferredProd?: number;
+  installedVersion?: string;
+  alreadyInstalled: boolean;
+}
+
 export interface InstallResult {
   id: string;
   version: string;
   name: string;
   path: string;
+  previousVersion?: string;
+  replaced: boolean;
 }
 
-export async function installToolFromZip(toolsDir: string, zipPath: string): Promise<InstallResult> {
+export interface InstallOptions {
+  /**
+   * Replacing an existing install of the same id (update/overwrite).
+   * Skips OS listen check so Host can stop the tool then install.
+   */
+  force?: boolean;
+}
+
+/** Peek tool.json from a zip without installing. */
+export function inspectToolZip(toolsDir: string, zipPath: string): ToolPackageInfo {
+  if (!existsSync(zipPath)) {
+    throw new Error(`文件不存在: ${zipPath}`);
+  }
+  const lower = zipPath.toLowerCase();
+  if (!lower.endsWith(".zip") && !lower.endsWith(".vettool.zip")) {
+    throw new Error("请选择 .vettool.zip 或 .zip 安装包");
+  }
+
+  const staging = mkdtempSync(join(tmpdir(), "vet-tool-inspect-"));
+  try {
+    extractZip(zipPath, staging);
+    const packageRoot = unwrapSingleRoot(staging);
+    assertPackageLayout(packageRoot);
+    const manifest = toolManifestSchema.parse(
+      JSON.parse(readFileSync(join(packageRoot, "tool.json"), "utf-8")),
+    );
+
+    const installedPath = join(toolsInstalledDir(toolsDir), manifest.id, "tool.json");
+    let installedVersion: string | undefined;
+    if (existsSync(installedPath)) {
+      try {
+        const cur = toolManifestSchema.safeParse(
+          JSON.parse(readFileSync(installedPath, "utf-8")),
+        );
+        if (cur.success) installedVersion = cur.data.version;
+      } catch {
+        installedVersion = undefined;
+      }
+    }
+
+    return {
+      id: manifest.id,
+      version: manifest.version,
+      name: manifest.name,
+      description: manifest.description ?? "",
+      preferredProd: manifest.ports?.preferredProd ?? manifest.ports?.prod,
+      installedVersion,
+      alreadyInstalled: Boolean(installedVersion) || existsSync(join(toolsInstalledDir(toolsDir), manifest.id)),
+    };
+  } finally {
+    rmSync(staging, { recursive: true, force: true });
+  }
+}
+
+export async function installToolFromZip(
+  toolsDir: string,
+  zipPath: string,
+  options: InstallOptions = {},
+): Promise<InstallResult> {
   if (!existsSync(zipPath)) {
     throw new Error(`文件不存在: ${zipPath}`);
   }
@@ -98,17 +168,45 @@ export async function installToolFromZip(toolsDir: string, zipPath: string): Pro
       JSON.parse(readFileSync(join(packageRoot, "tool.json"), "utf-8")),
     );
 
+    const installedRoot = toolsInstalledDir(toolsDir);
+    const target = join(installedRoot, manifest.id);
+    const replacing = existsSync(target);
+
+    if (replacing && !options.force) {
+      let installedVersion = "?";
+      try {
+        const cur = toolManifestSchema.parse(
+          JSON.parse(readFileSync(join(target, "tool.json"), "utf-8")),
+        );
+        installedVersion = cur.version;
+      } catch {
+        // keep ?
+      }
+      throw new Error(
+        `工具「${manifest.id}」已安装（v${installedVersion}）。请使用更新/覆盖安装，或先卸载后再装。`,
+      );
+    }
+
+    let previousVersion: string | undefined;
+    if (replacing) {
+      try {
+        previousVersion = toolManifestSchema.parse(
+          JSON.parse(readFileSync(join(target, "tool.json"), "utf-8")),
+        ).version;
+      } catch {
+        previousVersion = undefined;
+      }
+    }
+
     const prodPort = await assertProdPortAvailableForInstall({
       toolsDir,
       toolId: manifest.id,
       preferred: manifest.ports?.preferredProd,
       prod: manifest.ports?.prod,
+      skipListenCheck: Boolean(options.force && replacing),
     });
 
-    const installedRoot = toolsInstalledDir(toolsDir);
-    const target = join(installedRoot, manifest.id);
-
-    if (existsSync(target)) {
+    if (replacing) {
       rmSync(target, { recursive: true, force: true });
     }
     mkdirSync(dirname(target), { recursive: true });
@@ -140,6 +238,8 @@ export async function installToolFromZip(toolsDir: string, zipPath: string): Pro
       version: manifest.version,
       name: manifest.name,
       path: target,
+      previousVersion,
+      replaced: replacing,
     };
   } finally {
     rmSync(staging, { recursive: true, force: true });

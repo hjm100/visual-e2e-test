@@ -9,21 +9,16 @@ All notable changes to this project will be documented in this file.
 ### Features
 
 - 工具箱升级为可安装的工具平台
-  - 支持安装 `.vettool.zip` 工具包；列表展示工具当前版本
+  - 支持安装 `.vettool.zip` 工具包；列表展示工具当前版本与占用端口
   - 用户安装的工具保存在本机 Application Support 下的 `tools/` 目录，升级主应用不会清除
-  - 可卸载已安装工具
+  - 可卸载已安装工具；支持本地包更新/覆盖（同版本覆盖、异版本升级，先停服务再安装并自动启动）
+  - 端口严格使用 `tool.json` 声明值，不自动递增；占用或与其它工具冲突时拒绝安装并提示释放
+  - Host 启动时注入 `playwright` 软链，供场景录制等依赖 Playwright 的工具使用
   - 主应用与工具通过统一 RPC 协议通信（兼容旧版消息）
 - 图片重命名、场景录制改为独立工具包
   - 不再内置在主应用仓库；通过工具箱安装使用
 - 新增健康扫描工具包（`health-scan`）
   - 扫描静态资源 404、接口 5xx、页面布局错乱与疑似失效点击
-
-### Fixes
-
-- 工具端口严格使用 `tool.json` 声明值，不再自动递增
-  - 安装时若端口被占用或与其它已装工具冲突，拒绝安装并提示先释放
-- 启动已安装工具时注入 Host 的 `playwright` 软链
-  - 修复场景录制等工具因 ESM 无法通过 `NODE_PATH` 解析依赖而启动失败
 
 ## [1.4.0](https://github.com/visual-e2e/visual-e2e-test/compare/v1.3.0...v1.4.0) (2026-07-21)
 

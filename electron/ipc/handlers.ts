@@ -4,7 +4,7 @@ import {
   app, BrowserWindow, dialog, ipcMain, shell, type BrowserWindow as BrowserWindowType,
 } from "electron";
 import { createReportWindow } from "../windows/create-window.js";
-import { ensureToolRunning, stopTool } from "../tools/tool-manager.js";
+import { ensureToolRunning, stopToolAndWait } from "../tools/tool-manager.js";
 
 export interface IpcContext {
   reportWindow: BrowserWindowType | null;
@@ -123,7 +123,7 @@ export function registerIpcHandlers(ctx: IpcContext): void {
     if (!toolId?.trim()) {
       throw new Error("toolId 不能为空");
     }
-    stopTool(toolId);
+    await stopToolAndWait(toolId);
     return { ok: true };
   });
 }

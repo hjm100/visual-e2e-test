@@ -61,13 +61,16 @@ export function collectInstalledProdPorts(
 
 /**
  * Ensure the declared prod port is free for install.
- * Rejects if another installed tool claims it, or if the OS port is in use.
+ * Rejects if another installed tool claims it, or if the OS port is in use
+ * (unless skipListenCheck — used after Host has stopped this tool for update).
  */
 export async function assertProdPortAvailableForInstall(options: {
   toolsDir: string;
   toolId: string;
   preferred?: number;
   prod?: number;
+  /** When true, only check conflict with other installed tools (port may still be draining). */
+  skipListenCheck?: boolean;
 }): Promise<number> {
   const port = declaredProdPort({
     preferredProd: options.preferred,
@@ -82,7 +85,7 @@ export async function assertProdPortAvailableForInstall(options: {
     );
   }
 
-  if (!(await tryListen(port))) {
+  if (!options.skipListenCheck && !(await tryListen(port))) {
     throw new Error(
       `端口 ${port} 已被占用，请释放该端口后再安装（例如结束占用进程，或先在工具箱停止/卸载相关工具）`,
     );
